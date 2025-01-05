@@ -1,6 +1,9 @@
 # Galore
 
-I want to make a horde survival game with some roguelite elements. It'll be based on phaser, with a thing React layer on top.
+I want to make a horde survival game with some roguelite elements. It'll be based on phaser, with a thin React layer on top.
+
+## How to run
+Install dependencies via `npm i` and then run `npm run dev`
 
 ## Current state and stuff I want to do
 - [x] Add player character and a couple obstacles
@@ -10,3 +13,7 @@ I want to make a horde survival game with some roguelite elements. It'll be base
 - [ ] One of the obstacles spawns a mob, which shoots an arrow towards the player
 - [ ] Bigger map, figure out how to place assets down via config file idk
 - [ ] The list will go on as I learn more Phaser
+
+## Constributions
+
+Assets are from [kenney.nl](https://kenney.nl/assets/tiny-dungeon) under Creative Commons license
