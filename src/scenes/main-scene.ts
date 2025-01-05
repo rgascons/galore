@@ -3,17 +3,22 @@ import Phaser from 'phaser';
 import { Assets } from '../config/asset-config';
 
 export default class MainScene extends Phaser.Scene {
+  private readonly MONSTER_SPAWN_DELAY = 3000;
+  private readonly MONSTER_SHOOT_DELAY = 1000;
   private readonly MONSTER_SPEED = 150;
-  private readonly BULLET_SPEED = 250;
+  private readonly BULLET_SPEED = 300;
+  private readonly PLAYER_BULLET_SPEED = 400;
+  private readonly MIN_SPAWN_DISTANCE = 200;
   private readonly MONSTER_ROTATION_SPEED = 0.03;
 
   private player?: Phaser.Physics.Arcade.Sprite;
   private walls?: Phaser.Physics.Arcade.StaticGroup;
   private monsters?: Phaser.Physics.Arcade.Group;
   private monsterBullets?: Phaser.Physics.Arcade.Group;
+  private playerBullets?: Phaser.Physics.Arcade.Group;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
-  private shooter?: Phaser.GameObjects.Sprite;
-  private monsterTimer: number = 0;
+  private spaceKey?: Phaser.Input.Keyboard.Key;
+  private monsterSpawnTimer: number = 0;
 
   constructor() {
     super({ key: 'MainScene' });
@@ -31,15 +36,15 @@ export default class MainScene extends Phaser.Scene {
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
 
-    // Create walls and shooter
+    // Create walls
     this.walls = this.physics.add.staticGroup();
-    this.shooter = this.walls.create(200, 200, 'Wall') as Phaser.GameObjects.Sprite;
+    this.walls.create(200, 200, 'Wall');
     this.walls.create(600, 400, 'Wall');
 
     // Create monster group
     this.monsters = this.physics.add.group({
       defaultKey: 'Monster',
-      maxSize: 10,
+      maxSize: 20,
       createCallback: (monster) => {
         const m = monster as Phaser.Physics.Arcade.Sprite;
         m.setOrigin(0.5, 0.5);
@@ -48,30 +53,59 @@ export default class MainScene extends Phaser.Scene {
       }
     });
 
-    // Create bullets group for monsters
+    // Create monster bullets group
     this.monsterBullets = this.physics.add.group({
       defaultKey: 'Bullet',
-      maxSize: 30, // Allow for multiple bullets from multiple monsters
+      maxSize: 50,
       createCallback: (bullet) => {
         const b = bullet as Phaser.Physics.Arcade.Sprite;
         b.setOrigin(0.5, 0.5);
+        b.setScale(0.3); // Smaller bullets
       }
     });
 
-    // Add collisions
+    // Create player bullets group
+    this.playerBullets = this.physics.add.group({
+      defaultKey: 'Bullet',
+      maxSize: 30,
+      createCallback: (bullet) => {
+        const b = bullet as Phaser.Physics.Arcade.Sprite;
+        b.setOrigin(0.5, 0.5);
+        b.setScale(0.4);
+      }
+    });
+
+    // Setup collisions
     if (this.player) {
+      // Wall collisions
       this.physics.add.collider(this.player, this.walls);
+      this.physics.add.collider(this.monsters, this.walls);
+      this.physics.add.collider(this.playerBullets, this.walls, this.handleBulletWallCollision as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback, undefined, this);
+      this.physics.add.collider(this.monsterBullets, this.walls, this.handleBulletWallCollision as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback, undefined, this);
+      
+      // Player-Monster collision
       this.physics.add.overlap(
-        this.player, 
-        this.monsters, 
+        this.player,
+        this.monsters,
         this.handleMonsterCollision as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
         undefined,
         this
       );
-      this.physics.add.collider(
+
+      // Player-MonsterBullet collision
+      this.physics.add.overlap(
         this.player,
         this.monsterBullets,
         this.handleBulletHit as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+        undefined,
+        this
+      );
+
+      // PlayerBullet-Monster collision
+      this.physics.add.overlap(
+        this.playerBullets,
+        this.monsters,
+        this.handlePlayerBulletHit as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
         undefined,
         this
       );
@@ -79,77 +113,14 @@ export default class MainScene extends Phaser.Scene {
 
     // Setup controls
     this.cursors = this.input.keyboard?.createCursorKeys();
+    this.spaceKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
   }
 
-  private handleMonsterCollision(
-    player: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
-    monster: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile
-  ) {
-    if (monster instanceof Phaser.Physics.Arcade.Sprite) {
-      // TODO: Add a destruction effect here
-      monster.destroy();
-    }
-  }
-
-  private handleBulletHit(
-    player: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
+  private handleBulletWallCollision(
     bullet: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile
   ) {
     if (bullet instanceof Phaser.Physics.Arcade.Sprite) {
       bullet.destroy();
-    }
-    this.scene.restart();
-  }
-
-  private spawnMonster() {
-    if (!this.shooter || !this.player || !this.monsters) return;
-
-    const monster = this.monsters.get(this.shooter.x, this.shooter.y) as Phaser.Physics.Arcade.Sprite;
-    
-    if (monster) {
-      monster.setActive(true);
-      monster.setVisible(true);
-
-      // Calculate initial angle between shooter and player
-      const angle = Phaser.Math.Angle.Between(
-        this.shooter.x, this.shooter.y,
-        this.player.x, this.player.y
-      );
-
-      // Set initial monster velocity
-      this.physics.velocityFromRotation(angle, this.MONSTER_SPEED, monster.body?.velocity);
-      
-      // Set initial rotation
-      const angleInDegrees = Phaser.Math.RadToDeg(angle) + 90;
-      monster.setAngle(angleInDegrees);
-      
-      // Set next shoot time
-      monster.setData('nextShootTime', this.time.now + 2000);
-    }
-  }
-
-  private monsterShoot(monster: Phaser.Physics.Arcade.Sprite) {
-    if (!this.player || !this.monsterBullets) return;
-
-    const bullet = this.monsterBullets.get(monster.x, monster.y) as Phaser.Physics.Arcade.Sprite;
-    
-    if (bullet) {
-      bullet.setActive(true);
-      bullet.setVisible(true);
-      bullet.setScale(0.5); // Make bullets smaller than monsters
-
-      // Calculate angle between monster and player
-      const angle = Phaser.Math.Angle.Between(
-        monster.x, monster.y,
-        this.player.x, this.player.y
-      );
-
-      // Set bullet velocity
-      this.physics.velocityFromRotation(angle, this.BULLET_SPEED, bullet.body?.velocity);
-      
-      // Set bullet rotation
-      const angleInDegrees = Phaser.Math.RadToDeg(angle) + 90;
-      bullet.setAngle(angleInDegrees);
     }
   }
 
@@ -178,27 +149,140 @@ export default class MainScene extends Phaser.Scene {
       }
     }
 
-    // Update velocity based on new rotation
+    // Update velocity to move towards player
     const newVelocity = this.physics.velocityFromRotation(
       monster.rotation - Math.PI/2,
       this.MONSTER_SPEED
     );
     monster.setVelocity(newVelocity.x, newVelocity.y);
+  }
 
-    // Check if it's time to shoot
-    const nextShootTime = monster.getData('nextShootTime');
-    if (this.time.now >= nextShootTime) {
-      this.monsterShoot(monster);
-      monster.setData('nextShootTime', this.time.now + 2000); // Set next shoot time to 2 seconds from now
+  private getRandomSpawnPosition(): Phaser.Math.Vector2 {
+    if (!this.player) return new Phaser.Math.Vector2(0, 0);
+
+    let x: number, y: number, distance: number;
+    do {
+      x = Phaser.Math.Between(50, 750);
+      y = Phaser.Math.Between(50, 550);
+      distance = Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y);
+    } while (distance < this.MIN_SPAWN_DISTANCE);
+
+    return new Phaser.Math.Vector2(x, y);
+  }
+
+  private findNearestMonster(): Phaser.Math.Vector2 | null {
+    if (!this.player || !this.monsters) return null;
+
+    let nearestDistance = Number.MAX_VALUE;
+    let nearestPosition: Phaser.Math.Vector2 | null = null;
+
+    this.monsters.children.each((monster: Phaser.GameObjects.GameObject) => {
+      const m = monster as Phaser.Physics.Arcade.Sprite;
+      if (m.active) {
+        const distance = Phaser.Math.Distance.Between(
+          this.player!.x, this.player!.y,
+          m.x, m.y
+        );
+        if (distance < nearestDistance) {
+          nearestDistance = distance;
+          nearestPosition = new Phaser.Math.Vector2(m.x, m.y);
+        }
+      }
+      return null;
+    });
+
+    return nearestPosition;
+  }
+
+  private spawnMonster() {
+    if (!this.monsters) return;
+
+    const spawnPos = this.getRandomSpawnPosition();
+    const monster = this.monsters.get(spawnPos.x, spawnPos.y) as Phaser.Physics.Arcade.Sprite;
+    
+    if (monster) {
+      monster.setActive(true);
+      monster.setVisible(true);
+      monster.setData('nextShootTime', this.time.now + this.MONSTER_SHOOT_DELAY);
     }
   }
 
-  update(time: number, delta: number) {
+  private playerShoot() {
+    if (!this.player || !this.playerBullets) return;
+
+    const targetPos = this.findNearestMonster();
+    if (!targetPos) return;
+
+    const bullet = this.playerBullets.get(this.player.x, this.player.y) as Phaser.Physics.Arcade.Sprite;
+    
+    if (bullet) {
+      bullet.setActive(true).setVisible(true);
+
+      const angle = Phaser.Math.Angle.Between(
+        this.player.x, this.player.y,
+        targetPos.x, targetPos.y
+      );
+
+      this.physics.velocityFromRotation(angle, this.PLAYER_BULLET_SPEED, bullet.body?.velocity);
+      bullet.setRotation(angle + Math.PI/2);
+    }
+  }
+
+  private monsterShoot(monster: Phaser.Physics.Arcade.Sprite) {
+    if (!this.player || !this.monsterBullets) return;
+
+    const bullet = this.monsterBullets.get(monster.x, monster.y) as Phaser.Physics.Arcade.Sprite;
+    
+    if (bullet) {
+      bullet.setActive(true).setVisible(true);
+
+      const angle = Phaser.Math.Angle.Between(
+        monster.x, monster.y,
+        this.player.x, this.player.y
+      );
+
+      this.physics.velocityFromRotation(angle, this.BULLET_SPEED, bullet.body?.velocity);
+      bullet.setRotation(angle + Math.PI/2);
+    }
+  }
+
+  private handleMonsterCollision(
+    player: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
+    monster: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile
+  ) {
+    if (monster instanceof Phaser.Physics.Arcade.Sprite) {
+      monster.destroy();
+    }
+  }
+
+  private handleBulletHit(
+    player: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
+    bullet: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile
+  ) {
+    if (bullet instanceof Phaser.Physics.Arcade.Sprite) {
+      bullet.destroy();
+    }
+    this.scene.restart();
+  }
+
+  private handlePlayerBulletHit(
+    bullet: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
+    monster: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile
+  ) {
+    if (bullet instanceof Phaser.Physics.Arcade.Sprite) {
+      bullet.destroy();
+    }
+    if (monster instanceof Phaser.Physics.Arcade.Sprite) {
+      monster.destroy();
+    }
+  }
+
+  update(time: number) {
     if (!this.player || !this.cursors) return;
 
     const speed = 160;
 
-    // Horizontal movement
+    // Player movement
     if (this.cursors.left.isDown) {
       this.player.setVelocityX(-speed);
     } else if (this.cursors.right.isDown) {
@@ -207,7 +291,6 @@ export default class MainScene extends Phaser.Scene {
       this.player.setVelocityX(0);
     }
 
-    // Vertical movement
     if (this.cursors.up.isDown) {
       this.player.setVelocityY(-speed);
     } else if (this.cursors.down.isDown) {
@@ -216,36 +299,51 @@ export default class MainScene extends Phaser.Scene {
       this.player.setVelocityY(0);
     }
 
-    // Spawn monster every 5 seconds
-    if (time > this.monsterTimer) {
-      this.spawnMonster();
-      this.monsterTimer = time + 5000;
+    // Player shooting
+    if (Phaser.Input.Keyboard.JustDown(this.spaceKey!)) {
+      this.playerShoot();
     }
 
-    // Update each monster's direction and shooting
+    // Monster spawning
+    if (time > this.monsterSpawnTimer) {
+      this.spawnMonster();
+      this.monsterSpawnTimer = time + this.MONSTER_SPAWN_DELAY;
+    }
+
+    // Update monsters
     if (this.monsters) {
       this.monsters.children.each((monster: Phaser.GameObjects.GameObject) => {
         const m = monster as Phaser.Physics.Arcade.Sprite;
         if (m.active) {
+          // Update monster movement
           this.updateMonster(m);
-        }
-        // Clean up monsters that are out of bounds
-        if (m.x < 0 || m.x > 800 || m.y < 0 || m.y > 600) {
-          m.destroy();
+
+          // Clean up monsters that are out of bounds
+          if (m.x < 0 || m.x > 800 || m.y < 0 || m.y > 600) {
+            m.destroy();
+          }
+          
+          // Monster shooting
+          if (time > m.getData('nextShootTime')) {
+            this.monsterShoot(m);
+            m.setData('nextShootTime', time + this.MONSTER_SHOOT_DELAY);
+          }
         }
         return null;
       });
     }
 
     // Clean up bullets that are out of bounds
-    if (this.monsterBullets) {
-      this.monsterBullets.children.each((bullet: Phaser.GameObjects.GameObject) => {
-        const b = bullet as Phaser.Physics.Arcade.Sprite;
-        if (b.x < 0 || b.x > 800 || b.y < 0 || b.y > 600) {
-          b.destroy();
-        }
-        return null;
-      });
-    }
+    [this.monsterBullets, this.playerBullets].forEach(bulletGroup => {
+      if (bulletGroup) {
+        bulletGroup.children.each((bullet: Phaser.GameObjects.GameObject) => {
+          const b = bullet as Phaser.Physics.Arcade.Sprite;
+          if (b.x < 0 || b.x > 800 || b.y < 0 || b.y > 600) {
+            b.destroy();
+          }
+          return null;
+        });
+      }
+    });
   }
 }

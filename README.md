@@ -12,7 +12,9 @@ Install dependencies via `npm i` and then run `npm run dev`
 - [x] Arrow follows the player
 - [x] One of the obstacles spawns a mob, which shoots an arrow towards the player
 - [X] If the player touches the mob, the mob dies
-- [ ] The player can shoot bullets in the direction is facing
+- [X] The player can shoot bullets to the closest monster by pressing space bar
+- [X] Monsters spawn randomly in the arena
+- [X] Walls stop bullets and monsters
 - [ ] Bigger map, figure out how to place assets down via config file idk
 - [ ] The list will go on as I learn more Phaser
 
