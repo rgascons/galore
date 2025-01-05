@@ -15,10 +15,12 @@ Install dependencies via `npm i` and then run `npm run dev`
 - [X] The player can shoot bullets to the closest monster by pressing space bar
 - [X] Monsters spawn randomly in the arena
 - [X] Walls stop bullets and monsters
-- [ ] Implement random seed at the start of the game, and use it to determine placement of walls (capped at 3-4 for now)
+- [X] Implement random seed at the start of the game, and use it to determine placement of walls (capped at 5 for now)
 - [ ] Bigger map with scrolling and increased number of walls. Mobs should still appear near the player
 - [ ] Floor tileset so player can tell they're moving
-- [ ] The list will go on as I learn more Phaser
+- [ ] Points as the time goes on and monsters killed
+- [ ] Death screen showing number of points obtained and a revive button
+- ...the list will go on as I learn more Phaser
 
 ## Constributions
 

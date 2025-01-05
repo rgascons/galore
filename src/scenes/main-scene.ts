@@ -10,6 +10,9 @@ export default class MainScene extends Phaser.Scene {
   private readonly PLAYER_BULLET_SPEED = 400;
   private readonly MIN_SPAWN_DISTANCE = 200;
   private readonly MONSTER_ROTATION_SPEED = 0.03;
+  private readonly MAX_WALLS = 10;
+  private readonly WALL_SIZE = 16;
+  private readonly MIN_WALL_SPACING = 100;
 
   private player?: Phaser.Physics.Arcade.Sprite;
   private walls?: Phaser.Physics.Arcade.StaticGroup;
@@ -19,9 +22,14 @@ export default class MainScene extends Phaser.Scene {
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private spaceKey?: Phaser.Input.Keyboard.Key;
   private monsterSpawnTimer: number = 0;
+  private gameSeed: number = NaN;
 
   constructor() {
     super({ key: 'MainScene' });
+  }
+
+  init() {
+    this.gameSeed = Math.floor(Math.random() * 1000000);
   }
 
   preload() {
@@ -30,16 +38,64 @@ export default class MainScene extends Phaser.Scene {
     });
   }
 
+  private isPositionValid(x: number, y: number, existingPositions: { x: number, y: number }[]): boolean {
+    // Check distance from center (player spawn point)
+    const distanceFromCenter = Phaser.Math.Distance.Between(x, y, 400, 300);
+    if (distanceFromCenter < 150) return false; // Keep area around player spawn clear
+
+    // Check distance from other walls
+    for (const pos of existingPositions) {
+      const distance = Phaser.Math.Distance.Between(x, y, pos.x, pos.y);
+      if (distance < this.MIN_WALL_SPACING) return false;
+    }
+
+    // Check if position is too close to edges
+    if (x < this.WALL_SIZE || x > 800 - this.WALL_SIZE || 
+        y < this.WALL_SIZE || y > 600 - this.WALL_SIZE) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private generateWalls(): { x: number, y: number }[] {
+    // Initialize RNG with seed
+    const rng = new Phaser.Math.RandomDataGenerator([`${this.gameSeed}`]);
+    
+    const positions: { x: number, y: number }[] = [];
+    const numWalls = rng.between(2, this.MAX_WALLS); // Always have at least 2 walls
+    
+    let attempts = 0;
+    const maxAttempts = 100; // Prevent infinite loops
+
+    while (positions.length < numWalls && attempts < maxAttempts) {
+      const x = rng.between(this.WALL_SIZE, 800 - this.WALL_SIZE);
+      const y = rng.between(this.WALL_SIZE, 600 - this.WALL_SIZE);
+
+      if (this.isPositionValid(x, y, positions)) {
+        positions.push({ x, y });
+      }
+
+      attempts++;
+    }
+
+    console.log(`Generated ${positions.length} walls with seed ${this.gameSeed}`);
+    return positions;
+  }
+
   create() {
     // Create player
     this.player = this.physics.add.sprite(400, 300, 'Player');
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
 
-    // Create walls
+    // Create walls using seeded generation
     this.walls = this.physics.add.staticGroup();
-    this.walls.create(200, 200, 'Wall');
-    this.walls.create(600, 400, 'Wall');
+    const wallPositions = this.generateWalls();
+    
+    wallPositions.forEach(pos => {
+      this.walls?.create(pos.x, pos.y, 'Wall');
+    });
 
     // Create monster group
     this.monsters = this.physics.add.group({
