@@ -61,10 +61,10 @@ export default class MainScene extends Phaser.Scene {
     // Add collisions
     if (this.player) {
       this.physics.add.collider(this.player, this.walls);
-      this.physics.add.collider(
+      this.physics.add.overlap(
         this.player, 
         this.monsters, 
-        this.handleMonsterHit as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
+        this.handleMonsterCollision as Phaser.Types.Physics.Arcade.ArcadePhysicsCallback,
         undefined,
         this
       );
@@ -81,14 +81,14 @@ export default class MainScene extends Phaser.Scene {
     this.cursors = this.input.keyboard?.createCursorKeys();
   }
 
-  private handleMonsterHit(
+  private handleMonsterCollision(
     player: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile,
     monster: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile
   ) {
     if (monster instanceof Phaser.Physics.Arcade.Sprite) {
+      // TODO: Add a destruction effect here
       monster.destroy();
     }
-    this.scene.restart();
   }
 
   private handleBulletHit(
