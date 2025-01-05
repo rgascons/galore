@@ -10,7 +10,9 @@ Install dependencies via `npm i` and then run `npm run dev`
 - [x] Add sprites
 - [x] One of the obstacles shoots an arrow towards the player, if arrow touches the player the game resets
 - [x] Arrow follows the player
-- [ ] One of the obstacles spawns a mob, which shoots an arrow towards the player
+- [x] One of the obstacles spawns a mob, which shoots an arrow towards the player
+- [ ] If the player touches the mob, the mob dies
+- [ ] The player can shoot bullets in the direction is facing
 - [ ] Bigger map, figure out how to place assets down via config file idk
 - [ ] The list will go on as I learn more Phaser
 
