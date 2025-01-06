@@ -11,7 +11,7 @@ export default class MainScene extends Phaser.Scene {
   private readonly PLAYER_BULLET_SPEED = 400;
   private readonly MIN_SPAWN_DISTANCE = 200;
   private readonly MONSTER_ROTATION_SPEED = 0.03;
-  private readonly MAX_WALLS = 20;
+  private readonly MAX_WALLS = 30;
   private readonly WALL_SIZE = 16;
   private readonly MIN_WALL_SPACING = 100;
 
@@ -60,27 +60,27 @@ export default class MainScene extends Phaser.Scene {
     
     // Generate pattern
     for (let y = 0; y < tilesY; y++) {
-        for (let x = 0; x < tilesX; x++) {
-            const roll = rng.frac();
-            const tileKey = roll < 0.9 ? 'FloorMain' : 'FloorRare';
-            pattern.draw(tileKey, x * this.TILE_SIZE, y * this.TILE_SIZE);
-        }
+      for (let x = 0; x < tilesX; x++) {
+        const roll = rng.frac();
+        const tileKey = roll < 0.95 ? 'FloorMain' : 'FloorRare';
+        pattern.draw(tileKey, x * this.TILE_SIZE, y * this.TILE_SIZE);
+      }
     }
 
     // Convert RenderTexture to a static texture
     pattern.snapshot((snap) => {
       if (this.textures.exists(patternKey)) {
-          this.textures.remove(patternKey);
+        this.textures.remove(patternKey);
       }
       this.textures.addImage(patternKey, snap as HTMLImageElement);
       
       // Create the tileSprite after texture is ready
       const floor = this.add.tileSprite(
-          this.WORLD_WIDTH / 2,
-          this.WORLD_HEIGHT / 2,
-          this.WORLD_WIDTH,
-          this.WORLD_HEIGHT,
-          patternKey
+        this.WORLD_WIDTH / 2,
+        this.WORLD_HEIGHT / 2,
+        this.WORLD_WIDTH,
+        this.WORLD_HEIGHT,
+        patternKey
       );
       floor.setDepth(-1);
     });
@@ -278,9 +278,11 @@ export default class MainScene extends Phaser.Scene {
     if (!this.player) return new Phaser.Math.Vector2(0, 0);
 
     let x: number, y: number, distance: number;
+    const rng = new Phaser.Math.RandomDataGenerator([this.gameSeed + Date.now()]); // Add current time to vary spawns
+
     do {
-      x = Phaser.Math.Between(50, 750);
-      y = Phaser.Math.Between(50, 550);
+      x = rng.between(0, this.WORLD_WIDTH);
+      y = rng.between(0, this.WORLD_HEIGHT);
       distance = Phaser.Math.Distance.Between(x, y, this.player.x, this.player.y);
     } while (distance < this.MIN_SPAWN_DISTANCE);
 
