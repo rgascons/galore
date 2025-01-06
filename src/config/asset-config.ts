@@ -14,5 +14,6 @@ export const Assets = {
   // Add more asset types (audio, spritesheets, etc.) as needed
 } as const;
 
-// Make sure TypeScript knows these are constant values
-export type AssetKeys = typeof Assets.Images;
+export const AssetImagesKeys = Object.fromEntries(
+  Object.keys(Assets.Images).map(key => [key, key])
+ ) as { [K in keyof typeof Assets.Images]: K };

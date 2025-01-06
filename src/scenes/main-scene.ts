@@ -1,6 +1,8 @@
 // src/scenes/MainScene.ts
 import Phaser from 'phaser';
-import { Assets } from '../config/asset-config';
+import { Assets, AssetImagesKeys } from '../config/asset-config';
+
+const { Player, Wall, Bullet, Monster, FloorMain, FloorRare } = AssetImagesKeys;
 
 export class MainScene extends Phaser.Scene {
   // Game constants
@@ -73,7 +75,7 @@ export class MainScene extends Phaser.Scene {
     for (let y = 0; y < tilesY; y++) {
       for (let x = 0; x < tilesX; x++) {
         const roll = rng.frac();
-        const tileKey = roll < 0.95 ? 'FloorMain' : 'FloorRare';
+        const tileKey = roll < 0.95 ? FloorMain : FloorRare;
         pattern.draw(tileKey, x * this.TILE_SIZE, y * this.TILE_SIZE);
       }
     }
@@ -151,7 +153,7 @@ export class MainScene extends Phaser.Scene {
     this.player = this.physics.add.sprite(
       this.WORLD_WIDTH / 2,
       this.WORLD_HEIGHT / 2,
-      'Player'
+      Player
     );
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
@@ -166,12 +168,12 @@ export class MainScene extends Phaser.Scene {
     const wallPositions = this.generateWalls();
     
     wallPositions.forEach(pos => {
-      this.walls?.create(pos.x, pos.y, 'Wall');
+      this.walls?.create(pos.x, pos.y, Wall);
     });
 
     // Create monster group
     this.monsters = this.physics.add.group({
-      defaultKey: 'Monster',
+      defaultKey: Monster,
       maxSize: 20,
       createCallback: (monster) => {
         const m = monster as Phaser.Physics.Arcade.Sprite;
@@ -183,7 +185,7 @@ export class MainScene extends Phaser.Scene {
 
     // Create monster bullets group
     this.monsterBullets = this.physics.add.group({
-      defaultKey: 'Bullet',
+      defaultKey: Bullet,
       maxSize: 50,
       createCallback: (bullet) => {
         const b = bullet as Phaser.Physics.Arcade.Sprite;
@@ -194,7 +196,7 @@ export class MainScene extends Phaser.Scene {
 
     // Create player bullets group
     this.playerBullets = this.physics.add.group({
-      defaultKey: 'Bullet',
+      defaultKey: Bullet,
       maxSize: 30,
       createCallback: (bullet) => {
         const b = bullet as Phaser.Physics.Arcade.Sprite;
