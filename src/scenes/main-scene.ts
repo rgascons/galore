@@ -2,7 +2,7 @@
 import Phaser from 'phaser';
 import { Assets } from '../config/asset-config';
 
-export default class MainScene extends Phaser.Scene {
+export class MainScene extends Phaser.Scene {
   // Game constants
   private readonly MONSTER_SPAWN_DELAY = 3000;
   private readonly MONSTER_SHOOT_DELAY = 1000;
@@ -404,7 +404,9 @@ export default class MainScene extends Phaser.Scene {
     if (bullet instanceof Phaser.Physics.Arcade.Sprite) {
       bullet.destroy();
     }
-    this.scene.restart();
+    
+    // Transition to game over scene with current score
+    this.scene.start('GameOverScene', { score: this.score });
   }
 
   private handlePlayerBulletHit(
