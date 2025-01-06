@@ -20,6 +20,12 @@ export default class MainScene extends Phaser.Scene {
   private readonly WORLD_HEIGHT = 1800;
   private readonly TILE_SIZE = 16;
 
+  // Score constants
+  private readonly POINTS_PER_KILL = 100;
+  private readonly POINTS_PER_SECOND = 10;
+  private readonly TIME_POINT_INTERVAL = 1000; // Give points every second
+  
+
   private player?: Phaser.Physics.Arcade.Sprite;
   private walls?: Phaser.Physics.Arcade.StaticGroup;
   private monsters?: Phaser.Physics.Arcade.Group;
@@ -27,8 +33,11 @@ export default class MainScene extends Phaser.Scene {
   private playerBullets?: Phaser.Physics.Arcade.Group;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private spaceKey?: Phaser.Input.Keyboard.Key;
-  private monsterSpawnTimer: number = NaN;
+  private monsterSpawnTimer: number = 0;
   private gameSeed: string = '';
+  private score: number = 0;
+  private scoreText?: Phaser.GameObjects.Text;
+  private lastTimePoint: number = 0;
 
   constructor() {
     super({ key: 'MainScene' });
@@ -37,6 +46,8 @@ export default class MainScene extends Phaser.Scene {
   init() {
     this.gameSeed = `${Math.floor(Math.random() * 1000000)}`;
     this.monsterSpawnTimer = 0;
+    this.score = 0;
+    this.lastTimePoint = 0;
   }
 
   preload() {
@@ -231,6 +242,18 @@ export default class MainScene extends Phaser.Scene {
     // Setup controls
     this.cursors = this.input.keyboard?.createCursorKeys();
     this.spaceKey = this.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
+
+    // Create score display
+    this.scoreText = this.add.text(20, 20, 'SCORE: 0', {
+      fontFamily: 'monospace',
+      fontSize: '32px',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 4,
+      shadow: { blur: 2, stroke: true, fill: true }
+    });
+    this.scoreText.setScrollFactor(0); // Fix to camera
+    this.scoreText.setDepth(100); // Make sure it's always on top
   }
 
   private handleBulletWallCollision(
@@ -393,6 +416,45 @@ export default class MainScene extends Phaser.Scene {
     }
     if (monster instanceof Phaser.Physics.Arcade.Sprite) {
       monster.destroy();
+      // Add points for kill
+      this.addPoints(this.POINTS_PER_KILL);
+    }
+  }
+
+  private addPoints(points: number) {
+    this.score += points;
+    if (this.scoreText) {
+      this.scoreText.setText(`SCORE: ${this.score}`);
+      
+      // Create a floating score text
+      const floatingScore = this.add.text(
+          this.scoreText.x + 200,
+          this.scoreText.y,
+          `+${points}`,
+          {
+              fontFamily: 'monospace',
+              fontSize: '24px',
+              color: '#00ff00'
+          }
+      ).setScrollFactor(0);
+
+      // Animate the floating score
+      this.tweens.add({
+          targets: floatingScore,
+          y: floatingScore.y - 30,
+          alpha: 0,
+          duration: 1000,
+          ease: 'Power2',
+          onComplete: () => floatingScore.destroy()
+      });
+    }
+  }
+
+  private updateScore(time: number) {
+    // Add time-based points
+    if (time > this.lastTimePoint + this.TIME_POINT_INTERVAL) {
+        this.addPoints(this.POINTS_PER_SECOND);
+        this.lastTimePoint = time;
     }
   }
 
@@ -464,6 +526,9 @@ export default class MainScene extends Phaser.Scene {
         });
       }
     });
+
+    // Update score based on time
+    this.updateScore(time);
   }
 
   private isOutOfBounds(x: number, y: number): boolean {

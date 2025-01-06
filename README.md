@@ -18,7 +18,7 @@ Install dependencies via `npm i` and then run `npm run dev`
 - [X] Implement random seed at the start of the game, and use it to determine placement of walls (capped at 5 for now)
 - [X] Bigger map with scrolling and increased number of walls. Mobs should still appear near the player
 - [X] Floor tileset so player can tell they're moving
-- [ ] Points as the time goes on and monsters killed
+- [X] Points as the time goes on and monsters killed
 - [ ] Death screen showing number of points obtained and a revive button
 - [ ] Sound effects
 - ...the list will go on as I learn more Phaser
