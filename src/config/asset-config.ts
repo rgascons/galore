@@ -7,6 +7,8 @@ export const Assets = {
     Wall: BASE_DIR + '/assets/wall.png',
     Bullet: BASE_DIR + '/assets/bullet.png',
     Monster: BASE_DIR + '/assets/monster.png',
+    FloorMain: BASE_DIR + '/assets/floor-main.png',
+    FloorRare: BASE_DIR + '/assets/floor-rare.png',
     // Add more assets as needed
   },
   // Add more asset types (audio, spritesheets, etc.) as needed

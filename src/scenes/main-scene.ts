@@ -3,6 +3,7 @@ import Phaser from 'phaser';
 import { Assets } from '../config/asset-config';
 
 export default class MainScene extends Phaser.Scene {
+  // Game constants
   private readonly MONSTER_SPAWN_DELAY = 3000;
   private readonly MONSTER_SHOOT_DELAY = 1000;
   private readonly MONSTER_SPEED = 150;
@@ -10,9 +11,14 @@ export default class MainScene extends Phaser.Scene {
   private readonly PLAYER_BULLET_SPEED = 400;
   private readonly MIN_SPAWN_DISTANCE = 200;
   private readonly MONSTER_ROTATION_SPEED = 0.03;
-  private readonly MAX_WALLS = 10;
+  private readonly MAX_WALLS = 20;
   private readonly WALL_SIZE = 16;
   private readonly MIN_WALL_SPACING = 100;
+
+  // World constants
+  private readonly WORLD_WIDTH = 2400;
+  private readonly WORLD_HEIGHT = 1800;
+  private readonly TILE_SIZE = 16;
 
   private player?: Phaser.Physics.Arcade.Sprite;
   private walls?: Phaser.Physics.Arcade.StaticGroup;
@@ -21,15 +27,16 @@ export default class MainScene extends Phaser.Scene {
   private playerBullets?: Phaser.Physics.Arcade.Group;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private spaceKey?: Phaser.Input.Keyboard.Key;
-  private monsterSpawnTimer: number = 0;
-  private gameSeed: number = NaN;
+  private monsterSpawnTimer: number = NaN;
+  private gameSeed: string = '';
 
   constructor() {
     super({ key: 'MainScene' });
   }
 
   init() {
-    this.gameSeed = Math.floor(Math.random() * 1000000);
+    this.gameSeed = `${Math.floor(Math.random() * 1000000)}`;
+    this.monsterSpawnTimer = 0;
   }
 
   preload() {
@@ -38,10 +45,52 @@ export default class MainScene extends Phaser.Scene {
     });
   }
 
+  private createFloorPattern() {
+    // Create a smaller render texture for our pattern
+    const PATTERN_SIZE = 512; // This will repeat
+    const patternKey = 'FloorPattern';
+    const pattern = this.add.renderTexture(0, 0, PATTERN_SIZE, PATTERN_SIZE);
+    
+    // Use seeded RNG for consistent patterns
+    const rng = new Phaser.Math.RandomDataGenerator([this.gameSeed]);
+    
+    // Calculate number of tiles in our pattern
+    const tilesX = Math.ceil(PATTERN_SIZE / this.TILE_SIZE);
+    const tilesY = Math.ceil(PATTERN_SIZE / this.TILE_SIZE);
+    
+    // Generate pattern
+    for (let y = 0; y < tilesY; y++) {
+        for (let x = 0; x < tilesX; x++) {
+            const roll = rng.frac();
+            const tileKey = roll < 0.9 ? 'FloorMain' : 'FloorRare';
+            pattern.draw(tileKey, x * this.TILE_SIZE, y * this.TILE_SIZE);
+        }
+    }
+
+    // Convert RenderTexture to a static texture
+    pattern.snapshot((snap) => {
+      if (this.textures.exists(patternKey)) {
+          this.textures.remove(patternKey);
+      }
+      this.textures.addImage(patternKey, snap as HTMLImageElement);
+      
+      // Create the tileSprite after texture is ready
+      const floor = this.add.tileSprite(
+          this.WORLD_WIDTH / 2,
+          this.WORLD_HEIGHT / 2,
+          this.WORLD_WIDTH,
+          this.WORLD_HEIGHT,
+          patternKey
+      );
+      floor.setDepth(-1);
+    });
+  }
   private isPositionValid(x: number, y: number, existingPositions: { x: number, y: number }[]): boolean {
     // Check distance from center (player spawn point)
-    const distanceFromCenter = Phaser.Math.Distance.Between(x, y, 400, 300);
-    if (distanceFromCenter < 150) return false; // Keep area around player spawn clear
+    const worldCenterX = this.WORLD_WIDTH / 2;
+    const worldCenterY = this.WORLD_HEIGHT / 2;
+    const distanceFromCenter = Phaser.Math.Distance.Between(x, y, worldCenterX, worldCenterY);
+    if (distanceFromCenter < 150) return false;
 
     // Check distance from other walls
     for (const pos of existingPositions) {
@@ -50,8 +99,8 @@ export default class MainScene extends Phaser.Scene {
     }
 
     // Check if position is too close to edges
-    if (x < this.WALL_SIZE || x > 800 - this.WALL_SIZE || 
-        y < this.WALL_SIZE || y > 600 - this.WALL_SIZE) {
+    if (x < this.WALL_SIZE || x > this.WORLD_WIDTH - this.WALL_SIZE || 
+        y < this.WALL_SIZE || y > this.WORLD_HEIGHT - this.WALL_SIZE) {
       return false;
     }
 
@@ -59,18 +108,16 @@ export default class MainScene extends Phaser.Scene {
   }
 
   private generateWalls(): { x: number, y: number }[] {
-    // Initialize RNG with seed
-    const rng = new Phaser.Math.RandomDataGenerator([`${this.gameSeed}`]);
-    
+    const rng = new Phaser.Math.RandomDataGenerator([this.gameSeed]);
     const positions: { x: number, y: number }[] = [];
-    const numWalls = rng.between(2, this.MAX_WALLS); // Always have at least 2 walls
+    const numWalls = rng.between(8, this.MAX_WALLS);
     
     let attempts = 0;
-    const maxAttempts = 100; // Prevent infinite loops
+    const maxAttempts = 200; // Increased for larger world
 
     while (positions.length < numWalls && attempts < maxAttempts) {
-      const x = rng.between(this.WALL_SIZE, 800 - this.WALL_SIZE);
-      const y = rng.between(this.WALL_SIZE, 600 - this.WALL_SIZE);
+      const x = rng.between(this.WALL_SIZE, this.WORLD_WIDTH - this.WALL_SIZE);
+      const y = rng.between(this.WALL_SIZE, this.WORLD_HEIGHT - this.WALL_SIZE);
 
       if (this.isPositionValid(x, y, positions)) {
         positions.push({ x, y });
@@ -79,15 +126,29 @@ export default class MainScene extends Phaser.Scene {
       attempts++;
     }
 
-    console.log(`Generated ${positions.length} walls with seed ${this.gameSeed}`);
     return positions;
   }
 
   create() {
-    // Create player
-    this.player = this.physics.add.sprite(400, 300, 'Player');
+    // Set world bounds
+    this.physics.world.setBounds(0, 0, this.WORLD_WIDTH, this.WORLD_HEIGHT);
+
+    // Create floor
+    this.createFloorPattern();
+
+    // Create player at the center of the world
+    this.player = this.physics.add.sprite(
+      this.WORLD_WIDTH / 2,
+      this.WORLD_HEIGHT / 2,
+      'Player'
+    );
     this.player.setCollideWorldBounds(true);
     this.player.setScale(1);
+
+    // Setup camera
+    this.cameras.main.startFollow(this.player);
+    this.cameras.main.setZoom(1);
+    this.cameras.main.setBounds(0, 0, this.WORLD_WIDTH, this.WORLD_HEIGHT);
 
     // Create walls using seeded generation
     this.walls = this.physics.add.staticGroup();
@@ -375,7 +436,7 @@ export default class MainScene extends Phaser.Scene {
           this.updateMonster(m);
 
           // Clean up monsters that are out of bounds
-          if (m.x < 0 || m.x > 800 || m.y < 0 || m.y > 600) {
+          if (this.isOutOfBounds(m.x, m.y)) {
             m.destroy();
           }
           
@@ -394,12 +455,16 @@ export default class MainScene extends Phaser.Scene {
       if (bulletGroup) {
         bulletGroup.children.each((bullet: Phaser.GameObjects.GameObject) => {
           const b = bullet as Phaser.Physics.Arcade.Sprite;
-          if (b.x < 0 || b.x > 800 || b.y < 0 || b.y > 600) {
+          if (this.isOutOfBounds(b.x, b.y)) {
             b.destroy();
           }
           return null;
         });
       }
     });
+  }
+
+  private isOutOfBounds(x: number, y: number): boolean {
+    return (x < 0 || x > this.WORLD_WIDTH || y < 0 || y > this.WORLD_HEIGHT);
   }
 }
