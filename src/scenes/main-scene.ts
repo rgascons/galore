@@ -1,6 +1,7 @@
 // src/scenes/MainScene.ts
 import Phaser from 'phaser';
 import { Assets, AssetImagesKeys } from '../config/asset-config';
+import { StoreItem } from './store-scene';
 
 const { Player, Wall, Bullet, Monster, FloorMain, FloorRare } = AssetImagesKeys;
 
@@ -40,12 +41,14 @@ export class MainScene extends Phaser.Scene {
   private score: number = 0;
   private scoreText?: Phaser.GameObjects.Text;
   private lastTimePoint: number = 0;
+  private purchasedItems: StoreItem[] = [];
 
   constructor() {
     super({ key: 'MainScene' });
   }
 
-  init() {
+  init({ purchasedItems }: { purchasedItems: StoreItem[] }) {
+    this.purchasedItems = purchasedItems;
     this.gameSeed = `${Math.floor(Math.random() * 1000000)}`;
     this.monsterSpawnTimer = 0;
     this.score = 0;
@@ -256,7 +259,33 @@ export class MainScene extends Phaser.Scene {
     });
     this.scoreText.setScrollFactor(0); // Fix to camera
     this.scoreText.setDepth(100); // Make sure it's always on top
+
+    // Apply purchased items effects
+    //this.applyPurchasedItems();
   }
+
+  private applyPurchasedItems() {
+    this.purchasedItems.forEach(({ id }) => {
+        switch (id) {
+            case 'speed_boost':
+                // Increase player speed by 30%
+                this.playerSpeed *= 1.3;
+                break;
+            case 'rapid_fire':
+                // Decrease shooting cooldown by 50%
+                this.shootingCooldown *= 0.5;
+                break;
+            case 'shield':
+                // Add shield property
+                this.hasShield = true;
+                break;
+            case 'double_points':
+                // Double score multiplier
+                this.scoreMultiplier = 2;
+                break;
+        }
+    });
+}
 
   private handleBulletWallCollision(
     bullet: Phaser.Types.Physics.Arcade.GameObjectWithBody | Phaser.Tilemaps.Tile

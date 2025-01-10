@@ -70,6 +70,7 @@ export class GameOverScene extends Phaser.Scene {
         buttonBg.setFillStyle(0x440000);
       })
       .on('pointerup', () => {
+        // this.scene.start('StoreScene', { startingMoney: this.finalScore });
         this.scene.start('MainScene');
       });
   }
