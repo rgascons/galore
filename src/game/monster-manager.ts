@@ -1,4 +1,14 @@
+import Phaser from "phaser";
 import { AssetImagesKeys } from "../config/asset-config";
+
+enum MonsterType {
+  Normal = 'normal',
+  Heavy = 'heavy'
+}
+
+interface Monster extends Phaser.Physics.Arcade.Sprite {
+  monsterType: MonsterType;
+}
 
 export class MonsterManager {
   private scene: Phaser.Scene;
@@ -6,20 +16,22 @@ export class MonsterManager {
   private bullets: Phaser.Physics.Arcade.Group;
   private spawnTimer: number = 0;
 
-  private readonly MONSTER_SPEED = 150;
+  private readonly NORMAL_MONSTER_SPEED = 150;
+  private readonly HEAVY_MONSTER_SPEED = 100;
   private readonly BULLET_SPEED = 300;
   private readonly SPAWN_DELAY = 3000;
-  private readonly SHOOT_DELAY = 1000;
+  private readonly NORMAL_SHOOT_DELAY = 1000;
+  private readonly HEAVY_SHOOT_DELAY = 2000;
   private readonly MONSTER_ROTATION_SPEED = 0.03;
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
 
     this.monsters = scene.physics.add.group({
-      defaultKey: AssetImagesKeys.Monster,
+      classType: Phaser.Physics.Arcade.Sprite,
       maxSize: 20,
       createCallback: (monster) => {
-        const m = monster as Phaser.Physics.Arcade.Sprite;
+        const m = monster as Monster;
         m.setOrigin(0.5, 0.5);
         m.setData('rotationSpeed', this.MONSTER_ROTATION_SPEED);
         m.setData('nextShootTime', 0);
@@ -65,10 +77,23 @@ export class MonsterManager {
   }
 
   public spawn(position: Phaser.Math.Vector2): void {
-    const monster = this.monsters.get(position.x, position.y) as Phaser.Physics.Arcade.Sprite;
+    // Randomly choose monster type (30% chance for heavy monster)
+    const monsterType = Math.random() < 0.3 ? MonsterType.Heavy : MonsterType.Normal;
+    const textureKey = monsterType === MonsterType.Normal ?
+      AssetImagesKeys.Monster :
+      AssetImagesKeys.HeavyMonster;
+
+    const monster = this.monsters.create(position.x, position.y, textureKey) as Monster;
     if (monster) {
+      monster.monsterType = monsterType;
       monster.setActive(true).setVisible(true);
-      monster.setData('nextShootTime', this.scene.time.now + this.SHOOT_DELAY);
+      monster.setData('nextShootTime', this.scene.time.now +
+        (monsterType === MonsterType.Normal ? this.NORMAL_SHOOT_DELAY : this.HEAVY_SHOOT_DELAY));
+
+      // Set size based on type
+      if (monsterType === MonsterType.Heavy) {
+        monster.setScale(1.5);
+      }
     }
   }
 
@@ -94,7 +119,7 @@ export class MonsterManager {
     });
   }
 
-  private updateMonster(monster: Phaser.Physics.Arcade.Sprite, time: number, playerPos: Phaser.Math.Vector2): void {
+  private updateMonster(monster: Monster, time: number, playerPos: Phaser.Math.Vector2): void {
     const targetAngle = Phaser.Math.Angle.Between(
       monster.x, monster.y,
       playerPos.x, playerPos.y
@@ -108,24 +133,38 @@ export class MonsterManager {
       monster.setRotation(monster.rotation + (rotationDiff > 0 ? rotationSpeed : -rotationSpeed));
     }
 
+    const speed = monster.monsterType === MonsterType.Normal ? 
+      this.NORMAL_MONSTER_SPEED : 
+      this.HEAVY_MONSTER_SPEED;
+
     const newVelocity = this.scene.physics.velocityFromRotation(
       monster.rotation - Math.PI / 2,
-      this.MONSTER_SPEED
+      speed
     );
     monster.setVelocity(newVelocity.x, newVelocity.y);
 
     if (time > monster.getData('nextShootTime')) {
       this.shoot(monster, playerPos);
-      monster.setData('nextShootTime', time + this.SHOOT_DELAY);
+      monster.setData('nextShootTime', time + 
+        (monster.monsterType === MonsterType.Normal ? 
+          this.NORMAL_SHOOT_DELAY : 
+          this.HEAVY_SHOOT_DELAY));
     }
   }
 
-  private shoot(monster: Phaser.Physics.Arcade.Sprite, targetPos: Phaser.Math.Vector2): void {
+  private shoot(monster: Monster, targetPos: Phaser.Math.Vector2): void {
+    if (monster.monsterType === MonsterType.Normal) {
+      this.shootSingle(monster, targetPos);
+    } else {
+      this.shootTriple(monster, targetPos);
+    }
+  }
+
+  private shootSingle(monster: Monster, targetPos: Phaser.Math.Vector2): void {
     const bullet = this.bullets.get(monster.x, monster.y) as Phaser.Physics.Arcade.Sprite;
     if (!bullet) return;
 
     bullet.setActive(true).setVisible(true);
-
     const angle = Phaser.Math.Angle.Between(
       monster.x, monster.y,
       targetPos.x, targetPos.y
@@ -133,6 +172,24 @@ export class MonsterManager {
 
     this.scene.physics.velocityFromRotation(angle, this.BULLET_SPEED, bullet.body?.velocity);
     bullet.setRotation(angle + Math.PI / 2);
+  }
+
+  private shootTriple(monster: Monster, targetPos: Phaser.Math.Vector2): void {
+    const baseAngle = Phaser.Math.Angle.Between(
+      monster.x, monster.y,
+      targetPos.x, targetPos.y
+    );
+
+    // Create three bullets in a fan pattern (-15°, 0°, +15° spread)
+    [-0.26, 0, 0.26].forEach(angleOffset => {
+      const bullet = this.bullets.get(monster.x, monster.y) as Phaser.Physics.Arcade.Sprite;
+      if (!bullet) return;
+
+      bullet.setActive(true).setVisible(true);
+      const angle = baseAngle + angleOffset;
+      this.scene.physics.velocityFromRotation(angle, this.BULLET_SPEED, bullet.body?.velocity);
+      bullet.setRotation(angle + Math.PI / 2);
+    });
   }
 
   private isOutOfBounds(x: number, y: number, bounds: { width: number, height: number }): boolean {
