@@ -9,11 +9,12 @@ export interface StoreItem {
 }
 
 export class StoreScene extends Phaser.Scene {
-  private money: number = 1000; // Starting money
+  private money: number = 1000;
   private purchasedItems: StoreItem[] = [];
   private itemContainer?: Phaser.GameObjects.Container;
   private moneyText?: Phaser.GameObjects.Text;
   private startButton?: Phaser.GameObjects.Container;
+  private itemCards: Map<string, Phaser.GameObjects.Container> = new Map();
 
   // Sample store items
   private storeItems: StoreItem[] = [
@@ -44,18 +45,19 @@ export class StoreScene extends Phaser.Scene {
       description: '2x score multiplier',
       price: 1000,
       image: 'points_item'
-    },
-    // Add more items as needed
+    }
   ];
 
   constructor() {
     super({ key: 'StoreScene' });
   }
 
-  init({ startingMoney }: { startingMoney: number}) {
+  init({ startingMoney }: { startingMoney: number }) {
     if (startingMoney) {
       this.money = startingMoney;
     }
+    this.purchasedItems = [];
+    this.itemCards.clear();
   }
 
   preload() {
@@ -84,17 +86,17 @@ export class StoreScene extends Phaser.Scene {
       fontFamily: 'monospace',
     }).setOrigin(1, 0);
 
-    // Initialize container starting much lower
-    this.itemContainer = this.add.container(width / 2, 200); // Changed from 100/150 to 200
+    // Initialize container
+    this.itemContainer = this.add.container(width / 2, 200);
 
     // Create mask
     const maskGraphics = this.add.graphics();
     maskGraphics.fillStyle(0xffffff);
     maskGraphics.fillRect(
       (width - (width - 100)) / 2,
-      100,  // Mask starts higher than the container
+      100,
       width - 100,
-      height - 200  // Reduced mask height to avoid cutting off at bottom
+      height - 200
     );
 
     const mask = maskGraphics.createGeometryMask();
@@ -107,95 +109,100 @@ export class StoreScene extends Phaser.Scene {
     // Create start button
     this.createStartButton();
 
-    // Scroll handling with adjusted boundaries
+    // Scroll handling
     this.input.on('wheel', (pointer: any, gameObjects: any, deltaX: number, deltaY: number) => {
       if (this.itemContainer) {
         this.itemContainer.y -= deltaY;
+        const availableItems = this.storeItems.filter(item => 
+          !this.purchasedItems.some(purchased => purchased.id === item.id)
+        );
         this.itemContainer.y = Phaser.Math.Clamp(
           this.itemContainer.y,
-          -(this.storeItems.length * 160 - (height - 350)), // Adjusted clamp
-          200 // Match initial container y position
+          -(availableItems.length * 160 - (height - 350)),
+          200
         );
       }
     });
   }
 
-  createStoreItems() {
+  private createStoreItems() {
     if (!this.itemContainer) return;
 
-    this.storeItems.forEach((item, index) => {
-      const y = index * 160; // Keep 160px spacing between items
+    // Filter out purchased items
+    const availableItems = this.storeItems.filter(item => 
+      !this.purchasedItems.some(purchased => purchased.id === item.id)
+    );
 
-      const card = this.add.container(0, y);
-
-      const bg = this.add.rectangle(0, 0, 700, 140, 0x333333)
-        .setStrokeStyle(2, 0x666666);
-
-      const imageBox = this.add.rectangle(-300, 0, 80, 80, 0x444444);
-
-      const nameText = this.add.text(-200, -30, item.name, {
-        fontSize: '24px',
-        color: '#ffffff',
-        fontFamily: 'serif',
-      });
-
-      const descText = this.add.text(-200, 10, item.description, {
-        fontSize: '18px',
-        color: '#cccccc',
-        fontFamily: 'serif',
-      });
-
-      const buyButton = this.add.container(250, 0);
-      const buttonBg = this.add.rectangle(0, 0, 120, 40, 0x00aa00);
-      const priceText = this.add.text(0, 0, `$${item.price}`, {
-        fontSize: '20px',
-        color: '#ffffff',
-        fontFamily: 'monospace',
-      }).setOrigin(0.5);
-
-      buyButton.add([buttonBg, priceText]);
-
-      buttonBg.setInteractive({ useHandCursor: true })
-        .on('pointerover', () => buttonBg.setFillStyle(0x00cc00))
-        .on('pointerout', () => buttonBg.setFillStyle(0x00aa00))
-        .on('pointerdown', () => this.purchaseItem(item));
-
-      card.add([bg, imageBox, nameText, descText, buyButton]);
+    availableItems.forEach((item, index) => {
+      const y = index * 160;
+      const card = this.createItemCard(item, y);
       this.itemContainer?.add(card);
+      this.itemCards.set(item.id, card);
     });
   }
 
-  private createStartButton() {
-    const { width, height } = this.scale;
+  private createItemCard(item: StoreItem, y: number): Phaser.GameObjects.Container {
+    const card = this.add.container(0, y);
 
-    this.startButton = this.add.container(width / 2, height - 60);
+    const bg = this.add.rectangle(0, 0, 700, 140, 0x333333)
+      .setStrokeStyle(2, 0x666666);
 
-    const buttonBg = this.add.rectangle(0, 0, 200, 50, 0x660000);
-    const buttonText = this.add.text(0, 0, 'START GAME', {
+    const imageBox = this.add.rectangle(-300, 0, 80, 80, 0x444444);
+
+    const nameText = this.add.text(-200, -30, item.name, {
       fontSize: '24px',
       color: '#ffffff',
       fontFamily: 'serif',
+    });
+
+    const descText = this.add.text(-200, 10, item.description, {
+      fontSize: '18px',
+      color: '#cccccc',
+      fontFamily: 'serif',
+    });
+
+    const buyButton = this.add.container(250, 0);
+    const buttonBg = this.add.rectangle(0, 0, 120, 40, 0x00aa00);
+    const priceText = this.add.text(0, 0, `$${item.price}`, {
+      fontSize: '20px',
+      color: '#ffffff',
+      fontFamily: 'monospace',
     }).setOrigin(0.5);
 
-    this.startButton.add([buttonBg, buttonText]);
+    buyButton.add([buttonBg, priceText]);
 
     buttonBg.setInteractive({ useHandCursor: true })
-      .on('pointerover', () => buttonBg.setFillStyle(0x880000))
-      .on('pointerout', () => buttonBg.setFillStyle(0x660000))
-      .on('pointerdown', () => {
-        this.scene.start('MainScene', {
-          purchasedItems: this.purchasedItems
-        });
-      });
+      .on('pointerover', () => buttonBg.setFillStyle(0x00cc00))
+      .on('pointerout', () => buttonBg.setFillStyle(0x00aa00))
+      .on('pointerdown', () => this.purchaseItem(item));
+
+    card.add([bg, imageBox, nameText, descText, buyButton]);
+    return card;
   }
 
-  private purchaseItem(item: StoreItem) {
+  private async purchaseItem(item: StoreItem) {
     if (this.money >= item.price) {
       this.money -= item.price;
       this.purchasedItems.push(item);
 
       if (this.moneyText) {
         this.moneyText.setText(`$${this.money}`);
+      }
+
+      // Remove the purchased item's card with animation
+      const card = this.itemCards.get(item.id);
+      if (card) {
+        this.tweens.add({
+          targets: card,
+          alpha: 0,
+          x: 100,
+          duration: 300,
+          onComplete: () => {
+            card.destroy();
+            this.itemCards.delete(item.id);
+            this.reorganizeItems();
+          }
+        });
       }
 
       // Show purchase confirmation
@@ -240,5 +247,47 @@ export class StoreScene extends Phaser.Scene {
         onComplete: () => errorMsg.destroy()
       });
     }
+  }
+
+  private reorganizeItems() {
+    // Get remaining cards and reorganize their positions
+    const availableItems = this.storeItems.filter(item => 
+      !this.purchasedItems.some(purchased => purchased.id === item.id)
+    );
+
+    availableItems.forEach((item, index) => {
+      const card = this.itemCards.get(item.id);
+      if (card) {
+        this.tweens.add({
+          targets: card,
+          y: index * 160,
+          duration: 300
+        });
+      }
+    });
+  }
+
+  private createStartButton() {
+    const { width, height } = this.scale;
+
+    this.startButton = this.add.container(width / 2, height - 60);
+
+    const buttonBg = this.add.rectangle(0, 0, 200, 50, 0x660000);
+    const buttonText = this.add.text(0, 0, 'START GAME', {
+      fontSize: '24px',
+      color: '#ffffff',
+      fontFamily: 'serif',
+    }).setOrigin(0.5);
+
+    this.startButton.add([buttonBg, buttonText]);
+
+    buttonBg.setInteractive({ useHandCursor: true })
+      .on('pointerover', () => buttonBg.setFillStyle(0x880000))
+      .on('pointerout', () => buttonBg.setFillStyle(0x660000))
+      .on('pointerdown', () => {
+        this.scene.start('MainScene', {
+          purchasedItems: this.purchasedItems
+        });
+      });
   }
 }
