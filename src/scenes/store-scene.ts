@@ -1,4 +1,3 @@
-// src/scenes/StoreScene.ts
 import Phaser from 'phaser';
 
 export interface StoreItem {
@@ -9,7 +8,7 @@ export interface StoreItem {
   image: string;
 }
 
-export default class StoreScene extends Phaser.Scene {
+export class StoreScene extends Phaser.Scene {
   private money: number = 1000; // Starting money
   private purchasedItems: StoreItem[] = [];
   private itemContainer?: Phaser.GameObjects.Container;

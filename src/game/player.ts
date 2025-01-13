@@ -1,4 +1,5 @@
 import { AssetImagesKeys } from "../config/asset-config";
+import { CharacterModifiers, ModifierType } from "./modifiers/character-modifiers";
 import { MonsterManager } from "./monster-manager";
 
 export class Player {
@@ -7,11 +8,18 @@ export class Player {
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
   private spaceKey?: Phaser.Input.Keyboard.Key;
   private scene: Phaser.Scene;
-  private speed: number = 160;
+  private modifiers: CharacterModifiers;
+  private lastShootTime: number = 0;
+
+  private readonly baseSpeed: number = 160;
+  private readonly baseFireRate: number = 1000;
+  private readonly baseHealth: number = 1;
   private readonly BULLET_SPEED = 400;
 
-  constructor(scene: Phaser.Scene, x: number, y: number) {
+  constructor(scene: Phaser.Scene, x: number, y: number, modifiers: CharacterModifiers) {
     this.scene = scene;
+    this.modifiers = modifiers;
+    
     this.sprite = scene.physics.add.sprite(x, y, AssetImagesKeys.Player);
     this.sprite.setCollideWorldBounds(true);
     this.sprite.setScale(1);
@@ -28,6 +36,21 @@ export class Player {
         b.setScale(0.4);
       }
     });
+  }
+
+  private getSpeed(): number {
+    const speedModifier = this.modifiers.getModifierValue(ModifierType.Speed);
+    return this.baseSpeed * (1 + speedModifier);
+  }
+
+  private getFireRate(): number {
+    const fireRateModifier = this.modifiers.getModifierValue(ModifierType.FireRate);
+    return this.baseFireRate * (1 - fireRateModifier);
+  }
+
+  public getHealth(): number {
+    const healthModifier = this.modifiers.getModifierValue(ModifierType.Health);
+    return this.baseHealth + healthModifier;
   }
 
   public getSprite(): Phaser.Physics.Arcade.Sprite {
@@ -56,31 +79,33 @@ export class Player {
     if (!this.sprite.active) return;
     if (!this.cursors || !this.spaceKey) return;
 
+    const speed = this.getSpeed();
+
     if (this.cursors.left.isDown) {
-      this.sprite.setVelocityX(-this.speed);
+      this.sprite.setVelocityX(-speed);
     } else if (this.cursors.right.isDown) {
-      this.sprite.setVelocityX(this.speed);
+      this.sprite.setVelocityX(speed);
     } else {
       this.sprite.setVelocityX(0);
     }
 
     if (this.cursors.up.isDown) {
-      this.sprite.setVelocityY(-this.speed);
+      this.sprite.setVelocityY(-speed);
     } else if (this.cursors.down.isDown) {
-      this.sprite.setVelocityY(this.speed);
+      this.sprite.setVelocityY(speed);
     } else {
       this.sprite.setVelocityY(0);
     }
 
     if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
-      const target = monsterManager.findNearest(this.sprite.x, this.sprite.y);
-      if (target) {
-        this.shoot(target);
+      const currentTime = this.scene.time.now;
+      if (currentTime - this.lastShootTime >= this.getFireRate()) {
+        this.lastShootTime = currentTime;
+        const target = monsterManager.findNearest(this.sprite.x, this.sprite.y);
+        if (target) {
+          this.shoot(target);
+        }
       }
     }
-  }
-
-  public setSpeed(multiplier: number): void {
-    this.speed *= multiplier;
   }
 }

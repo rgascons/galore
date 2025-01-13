@@ -4,6 +4,7 @@ import { StoreItem } from './store-scene';
 import { Player } from '../game/player';
 import { MonsterManager } from '../game/monster-manager';
 import { TerrainGenerator } from '../game/terrain-generator';
+import { CharacterModifiers } from '../game/modifiers/character-modifiers';
 
 type ArcadePhysicsCallback = Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
 
@@ -15,6 +16,9 @@ export class MainScene extends Phaser.Scene {
   private scoreText?: Phaser.GameObjects.Text;
   private lastTimePoint: number = 0;
   private monsterSpawnTimer: number = 0;
+  private purchasedItems: StoreItem[] = [];
+  private characterModifiers: CharacterModifiers = new CharacterModifiers();
+
   private readonly SPAWN_DELAY = 3000;
   private readonly POINTS_PER_KILL = 100;
   private readonly POINTS_PER_SECOND = 10;
@@ -29,6 +33,7 @@ export class MainScene extends Phaser.Scene {
     this.monsterSpawnTimer = 0;
     this.score = 0;
     this.lastTimePoint = 0;
+    this.purchasedItems = data.purchasedItems;
   }
 
   preload() {
@@ -38,13 +43,24 @@ export class MainScene extends Phaser.Scene {
   }
 
   create() {
+    // Initialize modifiers and apply store items
+    this.characterModifiers = new CharacterModifiers();
+    this.purchasedItems.forEach(item => {
+      this.characterModifiers?.applyStoreItem(item);
+    });
+    
     // Initialize terrain
     this.terrainGenerator = new TerrainGenerator(this);
     this.terrainGenerator.initialize();
 
     // Create player at world center
     const bounds = this.terrainGenerator.getWorldBounds();
-    this.player = new Player(this, bounds.width / 2, bounds.height / 2);
+    this.player = new Player(
+      this,
+      bounds.width / 2,
+      bounds.height / 2,
+      this.characterModifiers
+    );
 
     // Initialize monster manager
     this.monsterManager = new MonsterManager(this);
