@@ -1,5 +1,11 @@
 import { AssetImagesKeys } from "../config/asset-config";
 
+interface WaterTile {
+  x: number;
+  y: number;
+  sprite?: Phaser.Physics.Arcade.Sprite;
+}
+
 export class TerrainGenerator {
   private scene: Phaser.Scene;
   private walls: Phaser.Physics.Arcade.StaticGroup;
@@ -9,12 +15,17 @@ export class TerrainGenerator {
   private readonly WORLD_HEIGHT = 1800;
   private readonly TILE_SIZE = 16;
   private readonly MAX_WALLS = 30;
-  private readonly MAX_WATER = 15;
   private readonly WALL_SIZE = 16;
-  private readonly WATER_SIZE = 48;
   private readonly MIN_WALL_SPACING = 100;
-  private readonly MIN_WATER_SPACING = 150;
   private readonly MIN_SPAWN_DISTANCE = 200;
+  private readonly MAX_WATER_POOLS = 8;
+  private readonly MAX_WATER_TILES = 15;
+  private readonly MIN_WATER_TILES = 5;
+  private readonly MIN_WATER_POOL_SPACING = 200;
+  private readonly WATER_GROWTH_DIRECTIONS = [
+    {x: 1, y: 0}, {x: -1, y: 0}, {x: 0, y: 1}, {x: 0, y: -1},
+    {x: 1, y: 1}, {x: -1, y: -1}, {x: 1, y: -1}, {x: -1, y: 1}
+  ];
 
   constructor(scene: Phaser.Scene) {
     this.scene = scene;
@@ -97,45 +108,100 @@ export class TerrainGenerator {
 
   private generateWater(): void {
     const rng = new Phaser.Math.RandomDataGenerator([this.scene.data.get('gameSeed')]);
-    const numWater = rng.between(8, this.MAX_WATER);
+    const numPools = rng.between(3, this.MAX_WATER_POOLS);
+    const waterPools: WaterTile[][] = [];
 
-    for (let i = 0; i < numWater; i++) {
-      let x = rng.between(this.WATER_SIZE, this.WORLD_WIDTH - this.WATER_SIZE);
-      let y = rng.between(this.WATER_SIZE, this.WORLD_HEIGHT - this.WATER_SIZE);
+    for (let i = 0; i < numPools; i++) {
+      let attempts = 0;
+      let validPosition = false;
+      let startX = 0;
+      let startY = 0;
 
-      if (this.isPositionValidForWater(x, y)) {
-        const water = this.water.create(x, y, AssetImagesKeys.Mud) as Phaser.Physics.Arcade.Sprite;
-        water.setScale(3); // Water pools are larger
+      // Find valid starting position for water pool
+      while (!validPosition && attempts < 50) {
+        startX = rng.between(this.TILE_SIZE * 2, this.WORLD_WIDTH - this.TILE_SIZE * 2);
+        startY = rng.between(this.TILE_SIZE * 2, this.WORLD_HEIGHT - this.TILE_SIZE * 2);
+        validPosition = this.isValidWaterPoolPosition(startX, startY, waterPools);
+        attempts++;
+      }
 
-        // Set circular physics body
-        if (water.body) {
-          (water.body as Phaser.Physics.Arcade.Body).setCircle(this.WATER_SIZE / 2);
-        }
+      if (validPosition) {
+        const pool = this.generateWaterPool(startX, startY, rng);
+        waterPools.push(pool);
+        this.createWaterSprites(pool);
       }
     }
   }
 
-  private isPositionValidForWater(x: number, y: number): boolean {
+  private isValidWaterPoolPosition(x: number, y: number, existingPools: WaterTile[][]): boolean {
+    // Check distance from center
     const worldCenterX = this.WORLD_WIDTH / 2;
     const worldCenterY = this.WORLD_HEIGHT / 2;
-    const distanceFromCenter = Phaser.Math.Distance.Between(x, y, worldCenterX, worldCenterY);
+    if (Phaser.Math.Distance.Between(x, y, worldCenterX, worldCenterY) < 200) {
+      return false;
+    }
 
-    if (distanceFromCenter < 200) return false; // Keep center more clear
-
-    // Check distance from other water pools
-    let validPosition = true;
-    this.water.getChildren().forEach((existingWater: Phaser.GameObjects.GameObject) => {
-      const waterSprite = existingWater as Phaser.Physics.Arcade.Sprite;
-      const distance = Phaser.Math.Distance.Between(
-        x, y,
-        waterSprite.x, waterSprite.y
-      );
-      if (distance < this.MIN_WATER_SPACING) {
-        validPosition = false;
+    // Check distance from other pools
+    for (const pool of existingPools) {
+      for (const tile of pool) {
+        if (Phaser.Math.Distance.Between(x, y, tile.x, tile.y) < this.MIN_WATER_POOL_SPACING) {
+          return false;
+        }
       }
-    });
+    }
 
-    return validPosition;
+    return true;
+  }
+
+  private generateWaterPool(startX: number, startY: number, rng: Phaser.Math.RandomDataGenerator): WaterTile[] {
+    const pool: WaterTile[] = [{x: startX, y: startY}];
+    const maxTiles = rng.between(this.MIN_WATER_TILES, this.MAX_WATER_TILES);
+    
+    while (pool.length < maxTiles) {
+      // Pick a random existing tile to grow from
+      const sourceTile = rng.pick(pool);
+      
+      // Pick a random direction to grow
+      const direction = rng.pick(this.WATER_GROWTH_DIRECTIONS);
+      const newTile = {
+        x: sourceTile.x + direction.x * this.TILE_SIZE,
+        y: sourceTile.y + direction.y * this.TILE_SIZE
+      };
+
+      // Check if the new tile position is valid
+      if (this.isValidNewWaterTile(newTile, pool)) {
+        pool.push(newTile);
+      }
+
+      // Break if we can't grow after too many attempts
+      if (pool.length === maxTiles) break;
+    }
+
+    return pool;
+  }
+
+  private isValidNewWaterTile(newTile: WaterTile, pool: WaterTile[]): boolean {
+    // Check world bounds
+    if (newTile.x < this.TILE_SIZE * 2 || newTile.x > this.WORLD_WIDTH - this.TILE_SIZE * 2 ||
+        newTile.y < this.TILE_SIZE * 2 || newTile.y > this.WORLD_HEIGHT - this.TILE_SIZE * 2) {
+      return false;
+    }
+
+    // Check if tile already exists in pool
+    return !pool.some(tile => 
+      tile.x === newTile.x && tile.y === newTile.y
+    );
+  }
+
+  private createWaterSprites(pool: WaterTile[]): void {
+    pool.forEach(tile => {
+      const sprite = this.water.create(tile.x, tile.y, AssetImagesKeys.Water) as Phaser.Physics.Arcade.Sprite;
+      sprite.setScale(1);
+      if (sprite.body) {
+        (sprite.body as Phaser.Physics.Arcade.Body).setSize(this.TILE_SIZE, this.TILE_SIZE);
+      }
+      tile.sprite = sprite;
+    });
   }
 
   private generateWalls(): void {

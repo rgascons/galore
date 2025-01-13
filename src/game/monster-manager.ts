@@ -3,7 +3,12 @@ import { AssetImagesKeys } from "../config/asset-config";
 
 enum MonsterType {
   Normal = 'normal',
-  Heavy = 'heavy'
+  Heavy = 'heavy',
+}
+
+type MonsterModifiers = {
+  MonsterSpeedMultiplier: number;
+  BulletSpeedMultiplier: number;
 }
 
 interface Monster extends Phaser.Physics.Arcade.Sprite {
@@ -97,11 +102,16 @@ export class MonsterManager {
     }
   }
 
-  public update(time: number, playerPos: Phaser.Math.Vector2, worldBounds: { width: number, height: number }): void {
+  public update(
+    time: number,
+    playerPos: Phaser.Math.Vector2,
+    worldBounds: { width: number, height: number },
+    monsterModifiers: MonsterModifiers,
+  ): void {
     this.monsters.children.each((monster: Phaser.GameObjects.GameObject) => {
       const m = monster as Phaser.Physics.Arcade.Sprite;
       if (m.active) {
-        this.updateMonster(m, time, playerPos);
+        this.updateMonster(m as Monster, time, playerPos, monsterModifiers);
 
         if (this.isOutOfBounds(m.x, m.y, worldBounds)) {
           m.destroy();
@@ -119,7 +129,7 @@ export class MonsterManager {
     });
   }
 
-  private updateMonster(monster: Monster, time: number, playerPos: Phaser.Math.Vector2): void {
+  private updateMonster(monster: Monster, time: number, playerPos: Phaser.Math.Vector2, monsterModifiers: MonsterModifiers): void {
     const targetAngle = Phaser.Math.Angle.Between(
       monster.x, monster.y,
       playerPos.x, playerPos.y
@@ -139,12 +149,12 @@ export class MonsterManager {
 
     const newVelocity = this.scene.physics.velocityFromRotation(
       monster.rotation - Math.PI / 2,
-      speed
+      speed * monsterModifiers.MonsterSpeedMultiplier
     );
     monster.setVelocity(newVelocity.x, newVelocity.y);
 
     if (time > monster.getData('nextShootTime')) {
-      this.shoot(monster, playerPos);
+      this.shoot(monster, playerPos, monsterModifiers);
       monster.setData('nextShootTime', time + 
         (monster.monsterType === MonsterType.Normal ? 
           this.NORMAL_SHOOT_DELAY : 
@@ -152,15 +162,15 @@ export class MonsterManager {
     }
   }
 
-  private shoot(monster: Monster, targetPos: Phaser.Math.Vector2): void {
+  private shoot(monster: Monster, targetPos: Phaser.Math.Vector2, monsterModifiers: MonsterModifiers): void {
     if (monster.monsterType === MonsterType.Normal) {
-      this.shootSingle(monster, targetPos);
+      this.shootSingle(monster, targetPos, monsterModifiers);
     } else {
-      this.shootTriple(monster, targetPos);
+      this.shootTriple(monster, targetPos, monsterModifiers);
     }
   }
 
-  private shootSingle(monster: Monster, targetPos: Phaser.Math.Vector2): void {
+  private shootSingle(monster: Monster, targetPos: Phaser.Math.Vector2, monsterModifiers: MonsterModifiers): void {
     const bullet = this.bullets.get(monster.x, monster.y) as Phaser.Physics.Arcade.Sprite;
     if (!bullet) return;
 
@@ -170,11 +180,11 @@ export class MonsterManager {
       targetPos.x, targetPos.y
     );
 
-    this.scene.physics.velocityFromRotation(angle, this.BULLET_SPEED, bullet.body?.velocity);
+    this.scene.physics.velocityFromRotation(angle, this.BULLET_SPEED * monsterModifiers.BulletSpeedMultiplier, bullet.body?.velocity);
     bullet.setRotation(angle + Math.PI / 2);
   }
 
-  private shootTriple(monster: Monster, targetPos: Phaser.Math.Vector2): void {
+  private shootTriple(monster: Monster, targetPos: Phaser.Math.Vector2, monsterModifiers: MonsterModifiers): void {
     const baseAngle = Phaser.Math.Angle.Between(
       monster.x, monster.y,
       targetPos.x, targetPos.y
@@ -187,7 +197,7 @@ export class MonsterManager {
 
       bullet.setActive(true).setVisible(true);
       const angle = baseAngle + angleOffset;
-      this.scene.physics.velocityFromRotation(angle, this.BULLET_SPEED, bullet.body?.velocity);
+      this.scene.physics.velocityFromRotation(angle, this.BULLET_SPEED * monsterModifiers.BulletSpeedMultiplier, bullet.body?.velocity);
       bullet.setRotation(angle + Math.PI / 2);
     });
   }

@@ -5,7 +5,7 @@ export const Assets = {
   Images: {
     Player: BASE_DIR + '/assets/player.png',
     Wall: BASE_DIR + '/assets/wall.png',
-    Mud: BASE_DIR + '/assets/mud.png',
+    Water: BASE_DIR + '/assets/water.png',
     Bullet: BASE_DIR + '/assets/bullet.png',
     Monster: BASE_DIR + '/assets/monster.png',
     HeavyMonster: BASE_DIR + '/assets/heavy-monster.png',

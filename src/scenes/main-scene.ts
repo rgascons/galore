@@ -7,6 +7,7 @@ import { TerrainGenerator } from '../game/terrain-generator';
 import { CharacterModifiers } from '../game/modifiers/character-modifiers';
 import { AbilityButton } from '../ui/ability-button';
 import { TimeDilationEffect } from '../effects/time-dilation';
+import { Abilities } from '../game/abilities';
 
 type ArcadePhysicsCallback = Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
 
@@ -33,6 +34,7 @@ export class MainScene extends Phaser.Scene {
   private readonly POINTS_PER_KILL = 100;
   private readonly POINTS_PER_SECOND = 10;
   private readonly TIME_POINT_INTERVAL = 1000;
+  private readonly TIME_DILATION_MULTIPLIER = 0.3;
 
   constructor() {
     super({ key: 'MainScene' });
@@ -117,9 +119,7 @@ export class MainScene extends Phaser.Scene {
         buttonX,
         this.scale.height - 80,
         {
-          key: 'G',
-          duration: 15000, // 15 seconds
-          icon: '👻'
+          ...Abilities.GhostForm
         },
         () => this.activateGhostForm(),
         () => this.deactivateGhostForm()
@@ -128,15 +128,12 @@ export class MainScene extends Phaser.Scene {
     }
 
     if (hasTimeDilation) {
-      console.log('time dilation')
       this.timeDilationButton = new AbilityButton(
         this,
         buttonX,
         this.scale.height - 80,
         {
-          key: 'T',
-          duration: 10000, // 10 seconds
-          icon: '⌛'
+          ...Abilities.TimeDilation
         },
         () => this.activateTimeDilation(),
         () => this.deactivateTimeDilation()
@@ -189,16 +186,16 @@ export class MainScene extends Phaser.Scene {
     // Slow down monsters
     this.monsterManager.getMonsters().getChildren().forEach((monster: any) => {
       monster.setVelocity(
-        monster.body.velocity.x * 0.5,
-        monster.body.velocity.y * 0.5
+        monster.body.velocity.x * this.TIME_DILATION_MULTIPLIER,
+        monster.body.velocity.y * this.TIME_DILATION_MULTIPLIER
       );
     });
 
     // Slow down monster bullets
     this.monsterManager.getBullets().getChildren().forEach((bullet: any) => {
       bullet.setVelocity(
-        bullet.body.velocity.x * 0.5,
-        bullet.body.velocity.y * 0.5
+        bullet.body.velocity.x * this.TIME_DILATION_MULTIPLIER,
+        bullet.body.velocity.y * this.TIME_DILATION_MULTIPLIER
       );
     });
   }
@@ -212,16 +209,16 @@ export class MainScene extends Phaser.Scene {
     // Restore monster speed
     this.monsterManager.getMonsters().getChildren().forEach((monster: any) => {
       monster.setVelocity(
-        monster.body.velocity.x * 2,
-        monster.body.velocity.y * 2
+        monster.body.velocity.x / this.TIME_DILATION_MULTIPLIER,
+        monster.body.velocity.y / this.TIME_DILATION_MULTIPLIER
       );
     });
 
     // Restore bullet speed
     this.monsterManager.getBullets().getChildren().forEach((bullet: any) => {
       bullet.setVelocity(
-        bullet.body.velocity.x * 2,
-        bullet.body.velocity.y * 2
+        bullet.body.velocity.x / this.TIME_DILATION_MULTIPLIER,
+        bullet.body.velocity.y / this.TIME_DILATION_MULTIPLIER
       );
     });
   }
@@ -336,7 +333,15 @@ export class MainScene extends Phaser.Scene {
       this.player.getSprite().x,
       this.player.getSprite().y
     );
-    this.monsterManager.update(time, playerPos, this.terrainGenerator.getWorldBounds());
+    this.monsterManager.update(
+      time,
+      playerPos,
+      this.terrainGenerator.getWorldBounds(),
+      {
+        BulletSpeedMultiplier: this.timeDilationEffect?.isActive()? this.TIME_DILATION_MULTIPLIER : 1,
+        MonsterSpeedMultiplier: this.timeDilationEffect?.isActive()? this.TIME_DILATION_MULTIPLIER : 1,
+      }
+    );
 
     // Update score
     if (time > this.lastTimePoint + this.TIME_POINT_INTERVAL) {

@@ -1,6 +1,7 @@
-interface AbilityConfig {
+export interface AbilityConfig {
   key: string;        // Keyboard key for activation
   duration: number;   // Duration in milliseconds
+  cooldown: number;   // Duration in milliseconds
   icon: string;       // Text or icon to display
 }
 
@@ -79,11 +80,15 @@ export class AbilityButton {
 
     // Set up deactivation timer
     this.button.scene.time.delayedCall(this.config.duration, () => {
+      this.onDeactivate();
+    });
+
+    // Set up cooldown timer
+    this.button.scene.time.delayedCall(this.config.cooldown, () => {
       this.isActive = false;
       this.background.setFillStyle(0x333333);
       this.cooldownOverlay.clear();
       this.cooldownOverlay.setVisible(false);
-      this.onDeactivate();
     });
   }
 
@@ -92,7 +97,7 @@ export class AbilityButton {
 
     // Update cooldown overlay
     const elapsed = Date.now() - this.activationTime;
-    const progress = Math.min(elapsed / this.config.duration, 1);
+    const progress = Math.min(elapsed / this.config.cooldown, 1);
 
     this.cooldownOverlay.clear();
     this.cooldownOverlay.setVisible(true);
