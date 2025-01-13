@@ -1,4 +1,4 @@
-import { AssetImagesKeys } from "../config/asset-config";
+import { AssetImagesKeys, AssetSoundKeys } from "../config/asset-config";
 import { MonsterManager } from "./monster-manager";
 import { CharacterModifiers, ModifierType } from "./modifiers/character-modifiers";
 
@@ -12,6 +12,8 @@ export class Player {
   private lastShootTime: number = 0;
   private shieldGraphics?: Phaser.GameObjects.Graphics;
   private shieldAngle: number = 0;
+
+  private shootSound?: Phaser.Sound.BaseSound;
 
   private readonly baseSpeed: number = 160;
   private readonly baseFireRate: number = 1000;
@@ -44,6 +46,8 @@ export class Player {
         b.setScale(0.4);
       }
     });
+
+    this.shootSound = scene.sound.add(AssetSoundKeys.Shoot);
   }
 
   private getSpeed(): number {
@@ -85,6 +89,8 @@ export class Player {
   public shoot(targetPos: Phaser.Math.Vector2): void {
     const bullet = this.bullets.get(this.sprite.x, this.sprite.y) as Phaser.Physics.Arcade.Sprite;
     if (!bullet) return;
+
+    this.shootSound?.play();
 
     bullet.setActive(true).setVisible(true);
     const angle = Phaser.Math.Angle.Between(

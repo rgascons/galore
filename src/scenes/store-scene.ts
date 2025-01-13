@@ -9,7 +9,7 @@ export interface StoreItem {
 }
 
 export class StoreScene extends Phaser.Scene {
-  private money: number = 1000;
+  private money: number = 2000;
   private purchasedItems: StoreItem[] = [];
   private itemContainer?: Phaser.GameObjects.Container;
   private moneyText?: Phaser.GameObjects.Text;
@@ -60,7 +60,7 @@ export class StoreScene extends Phaser.Scene {
       image: 'time_item'
     },
     // All below not implemented
-    {
+    /*{
       id: 'bullet_echo',
       name: 'Bullet Echo',
       description: 'Bullets split on wall impact',
@@ -80,7 +80,7 @@ export class StoreScene extends Phaser.Scene {
       description: 'Explode on death',
       price: 1500,
       image: 'blast_item'
-    }
+    }*/
   ];
 
   constructor() {

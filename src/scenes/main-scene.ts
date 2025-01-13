@@ -1,5 +1,5 @@
 import Phaser from 'phaser';
-import { Assets } from '../config/asset-config';
+import { Assets, AssetSoundKeys } from '../config/asset-config';
 import { StoreItem } from './store-scene';
 import { Player } from '../game/player';
 import { MonsterManager } from '../game/monster-manager';
@@ -24,6 +24,11 @@ export class MainScene extends Phaser.Scene {
   private timeDilationButton?: AbilityButton;
   private timeDilationEffect?: TimeDilationEffect;
 
+  private shootSound?: Phaser.Sound.BaseSound;
+  private deathSound?: Phaser.Sound.BaseSound;
+  private timeDilationSound?: Phaser.Sound.BaseSound;
+  private ghostSound?: Phaser.Sound.BaseSound;
+
   private readonly SPAWN_DELAY = 3000;
   private readonly POINTS_PER_KILL = 100;
   private readonly POINTS_PER_SECOND = 10;
@@ -44,6 +49,10 @@ export class MainScene extends Phaser.Scene {
   preload() {
     Object.entries(Assets.Images).forEach(([key, path]) => {
       this.load.image(key, path);
+    });
+
+    Object.entries(Assets.Sounds).forEach(([key, path]) => {
+      this.load.audio(key, path);
     });
 
     // Load particle texture
@@ -88,6 +97,12 @@ export class MainScene extends Phaser.Scene {
 
     // Initialize time dilation effect
     this.timeDilationEffect = new TimeDilationEffect(this);
+
+    // Initialize sounds
+    this.shootSound = this.sound.add(AssetSoundKeys.Shoot);
+    this.deathSound = this.sound.add(AssetSoundKeys.Death);
+    this.timeDilationSound = this.sound.add(AssetSoundKeys.TimeDilation);
+    this.ghostSound = this.sound.add(AssetSoundKeys.Ghost);
   }
 
   private createAbilityButtons(): void {
@@ -132,6 +147,9 @@ export class MainScene extends Phaser.Scene {
   private activateGhostForm(): void {
     if (!this.player) return;
 
+    // Play ghost form sound
+    this.ghostSound?.play();
+
     // Make player semi-transparent
     this.player.getSprite().setAlpha(0.5);
 
@@ -161,6 +179,9 @@ export class MainScene extends Phaser.Scene {
 
   private activateTimeDilation(): void {
     if (!this.monsterManager || !this.timeDilationEffect) return;
+
+    // Play time dilation sound
+    this.timeDilationSound?.play();
 
     // Activate visual effect
     this.timeDilationEffect.activate();
@@ -281,6 +302,7 @@ export class MainScene extends Phaser.Scene {
     if (this.player?.hasShield()) {
       this.player?.removeShield();
     } else {
+      this.deathSound?.play();
       this.scene.start('GameOverScene', { score: this.score });
     }
   }

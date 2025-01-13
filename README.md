@@ -22,7 +22,10 @@ Install dependencies via `npm i` and then run `npm run dev`
 - [X] Death screen showing number of points obtained and a revive button
 - [X] Store to buy passive upgrades
 - [X] Ability button and extra upgrades
-- [ ] Sound effects
+- [X] Sound effects
+- [ ] Improved terrain generation
+- [ ] Add monster variety
+- [ ] Implement more items
 - ...the list will go on as I learn more Phaser
 
 ## Constributions

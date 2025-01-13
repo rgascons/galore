@@ -11,9 +11,18 @@ export const Assets = {
     FloorRare: BASE_DIR + '/assets/floor-rare.png',
     // Add more assets as needed
   },
-  // Add more asset types (audio, spritesheets, etc.) as needed
+  Sounds: {
+    Shoot: BASE_DIR + '/assets/sound/shoot.mp3',
+    Death: BASE_DIR + '/assets/sound/death.mp3',
+    TimeDilation: BASE_DIR + '/assets/sound/time-dilation.mp3',
+    Ghost: BASE_DIR + '/assets/sound/ghost.mp3',
+  },
 } as const;
 
 export const AssetImagesKeys = Object.fromEntries(
   Object.keys(Assets.Images).map(key => [key, key])
- ) as { [K in keyof typeof Assets.Images]: K };
+) as { [K in keyof typeof Assets.Images]: K };
+
+export const AssetSoundKeys = Object.fromEntries(
+  Object.keys(Assets.Sounds).map(key => [key, key])
+) as { [K in keyof typeof Assets.Sounds]: K };
