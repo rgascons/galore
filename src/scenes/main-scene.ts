@@ -316,8 +316,9 @@ export class MainScene extends Phaser.Scene {
   update(time: number) {
     if (!this.player || !this.monsterManager || !this.terrainGenerator) return;
 
-    // Update player
+    // Update player and check water collision
     this.player.update(this.monsterManager);
+    this.player.checkMudCollision(this.terrainGenerator.getWater());
 
     // Handle monster spawning
     if (time > this.monsterSpawnTimer) {

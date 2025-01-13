@@ -12,6 +12,7 @@ export class Player {
   private lastShootTime: number = 0;
   private shieldGraphics?: Phaser.GameObjects.Graphics;
   private shieldAngle: number = 0;
+  private isInMud: boolean = false;
 
   private shootSound?: Phaser.Sound.BaseSound;
 
@@ -25,6 +26,7 @@ export class Player {
   constructor(scene: Phaser.Scene, x: number, y: number, modifiers: CharacterModifiers) {
     this.scene = scene;
     this.modifiers = modifiers;
+    this.isInMud = false;
 
     this.sprite = scene.physics.add.sprite(x, y, AssetImagesKeys.Player);
     this.sprite.setCollideWorldBounds(true);
@@ -52,7 +54,9 @@ export class Player {
 
   private getSpeed(): number {
     const speedModifier = this.modifiers.getModifierValue(ModifierType.Speed);
-    return this.baseSpeed * (1 + speedModifier);
+    const baseModifiedSpeed = this.baseSpeed * (1 + speedModifier);
+    // Apply mud slowdown if in mud
+    return this.isInMud ? baseModifiedSpeed * 0.5 : baseModifiedSpeed;
   }
 
   private getFireRate(): number {
@@ -137,6 +141,22 @@ export class Player {
 
     // Update shield effect
     this.updateShieldEffect();
+  }
+
+  public checkMudCollision(mud: Phaser.Physics.Arcade.StaticGroup): void {
+    // Check if player is in mud
+    this.scene.physics.overlap(
+      this.sprite,
+      mud,
+      () => { this.isInMud = true; },
+      undefined,
+      this
+    );
+    
+    // Reset mud state if not overlapping
+    if (!this.scene.physics.overlap(this.sprite, mud)) {
+      this.isInMud = false;
+    }
   }
 
   private updateShieldEffect(): void {
