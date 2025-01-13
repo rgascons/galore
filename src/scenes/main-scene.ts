@@ -111,14 +111,15 @@ export class MainScene extends Phaser.Scene {
   }
 
   private addPoints(points: number) {
-    this.score += points;
+    const actualPoints = (points * (this.player?.getScoreMultiplier() ?? 1));
+    this.score += actualPoints;
     if (this.scoreText) {
       this.scoreText.setText(`SCORE: ${this.score}`);
 
       const floatingScore = this.add.text(
         this.scoreText.x + 200,
         this.scoreText.y,
-        `+${points}`,
+        `+${actualPoints}`,
         {
           fontFamily: 'monospace',
           fontSize: '24px',
@@ -147,7 +148,12 @@ export class MainScene extends Phaser.Scene {
 
   private handleBulletHit(_player: Phaser.GameObjects.GameObject, bullet: Phaser.GameObjects.GameObject) {
     (bullet as Phaser.Physics.Arcade.Sprite).destroy();
-    this.scene.start('GameOverScene', { score: this.score });
+    
+    if (this.player?.hasShield()) {
+      this.player?.removeShield();
+    } else {
+      this.scene.start('GameOverScene', { score: this.score });
+    }
   }
 
   private handlePlayerBulletHit(bullet: Phaser.GameObjects.GameObject, monster: Phaser.GameObjects.GameObject) {

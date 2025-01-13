@@ -1,6 +1,6 @@
 import { AssetImagesKeys } from "../config/asset-config";
-import { CharacterModifiers, ModifierType } from "./modifiers/character-modifiers";
 import { MonsterManager } from "./monster-manager";
+import { CharacterModifiers, ModifierType } from "./modifiers/character-modifiers";
 
 export class Player {
   private sprite: Phaser.Physics.Arcade.Sprite;
@@ -10,19 +10,27 @@ export class Player {
   private scene: Phaser.Scene;
   private modifiers: CharacterModifiers;
   private lastShootTime: number = 0;
+  private shieldGraphics?: Phaser.GameObjects.Graphics;
+  private shieldAngle: number = 0;
 
   private readonly baseSpeed: number = 160;
   private readonly baseFireRate: number = 1000;
   private readonly baseHealth: number = 1;
   private readonly BULLET_SPEED = 400;
+  private readonly SHIELD_RADIUS = 15;
+  private readonly SHIELD_ROTATION_SPEED = 0.02;
 
   constructor(scene: Phaser.Scene, x: number, y: number, modifiers: CharacterModifiers) {
     this.scene = scene;
     this.modifiers = modifiers;
-    
+
     this.sprite = scene.physics.add.sprite(x, y, AssetImagesKeys.Player);
     this.sprite.setCollideWorldBounds(true);
     this.sprite.setScale(1);
+
+    // Create shield graphics
+    this.shieldGraphics = scene.add.graphics();
+    this.updateShieldEffect();
 
     this.cursors = scene.input.keyboard?.createCursorKeys();
     this.spaceKey = scene.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
@@ -51,6 +59,19 @@ export class Player {
   public getHealth(): number {
     const healthModifier = this.modifiers.getModifierValue(ModifierType.Health);
     return this.baseHealth + healthModifier;
+  }
+
+  public getScoreMultiplier(): number {
+    const multiplierModifier = this.modifiers.getModifierValue(ModifierType.ScoreMultiplier);
+    return 1 + multiplierModifier; // Base multiplier is 1
+  }
+
+  public hasShield(): boolean {
+    return this.modifiers.getModifierValue(ModifierType.Health) > 0;
+  }
+
+  public removeShield(): void {
+    this.modifiers.clearModifiers(ModifierType.Health);
   }
 
   public getSprite(): Phaser.Physics.Arcade.Sprite {
@@ -107,5 +128,62 @@ export class Player {
         }
       }
     }
+
+    // Update shield effect
+    this.updateShieldEffect();
+  }
+
+  private updateShieldEffect(): void {
+    if (!this.shieldGraphics) return;
+
+    this.shieldGraphics.clear();
+
+    if (this.hasShield()) {
+      // Update shield rotation
+      this.shieldAngle += this.SHIELD_ROTATION_SPEED;
+      
+      // Draw shield effect
+      this.shieldGraphics.lineStyle(2, 0x00ffff, 0.8);
+      
+      // Create a hexagonal shield with rotation
+      const points: { x: number, y: number }[] = [];
+      const segments = 6;
+      
+      for (let i = 0; i <= segments; i++) {
+        const angle = (i / segments) * Math.PI * 2 + this.shieldAngle;
+        points.push({
+          x: this.sprite.x + Math.cos(angle) * this.SHIELD_RADIUS,
+          y: this.sprite.y + Math.sin(angle) * this.SHIELD_RADIUS
+        });
+      }
+
+      // Draw the main shield shape
+      this.shieldGraphics.beginPath();
+      this.shieldGraphics.moveTo(points[0].x, points[0].y);
+      
+      for (let i = 1; i <= segments; i++) {
+        this.shieldGraphics.lineTo(points[i].x, points[i].y);
+      }
+      
+      this.shieldGraphics.strokePath();
+
+      // Add glow effect
+      this.shieldGraphics.lineStyle(4, 0x00ffff, 0.2);
+      this.shieldGraphics.beginPath();
+      this.shieldGraphics.moveTo(points[0].x, points[0].y);
+      
+      for (let i = 1; i <= segments; i++) {
+        this.shieldGraphics.lineTo(points[i].x, points[i].y);
+      }
+      
+      this.shieldGraphics.strokePath();
+    }
+  }
+
+  public destroy(): void {
+    if (this.shieldGraphics) {
+      this.shieldGraphics.destroy();
+    }
+    this.sprite.destroy();
   }
 }
