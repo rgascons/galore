@@ -30,7 +30,7 @@ export class MainScene extends Phaser.Scene {
   private timeDilationSound?: Phaser.Sound.BaseSound;
   private ghostSound?: Phaser.Sound.BaseSound;
 
-  private readonly SPAWN_DELAY = 3000;
+  private readonly SPAWN_DELAY = 500;
   private readonly POINTS_PER_KILL = 100;
   private readonly POINTS_PER_SECOND = 10;
   private readonly TIME_POINT_INTERVAL = 1000;
@@ -74,10 +74,11 @@ export class MainScene extends Phaser.Scene {
 
     // Create player at world center
     const bounds = this.terrainGenerator.getWorldBounds();
+    const spawnPosition = this.terrainGenerator.getRandomRoomCenterPosition();
     this.player = new Player(
       this,
-      bounds.width / 2,
-      bounds.height / 2,
+      spawnPosition.x,
+      spawnPosition.y,
       this.characterModifiers
     );
 
@@ -239,7 +240,6 @@ export class MainScene extends Phaser.Scene {
     this.physics.add.collider(monsterBullets, walls, this.handleBulletWallCollision as ArcadePhysicsCallback, undefined, this);
 
     // Monster collisions
-    this.physics.add.overlap(playerSprite, monsters, this.handleMonsterCollision as ArcadePhysicsCallback, undefined, this);
     this.physics.add.overlap(playerSprite, monsterBullets, this.handleBulletHit as ArcadePhysicsCallback, undefined, this);
     this.physics.add.overlap(playerBullets, monsters, this.handlePlayerBulletHit as ArcadePhysicsCallback, undefined, this);
   }
@@ -287,10 +287,6 @@ export class MainScene extends Phaser.Scene {
 
   private handleBulletWallCollision(bullet: Phaser.GameObjects.GameObject) {
     (bullet as Phaser.Physics.Arcade.Sprite).destroy();
-  }
-
-  private handleMonsterCollision(_player: Phaser.GameObjects.GameObject, monster: Phaser.GameObjects.GameObject) {
-    (monster as Phaser.Physics.Arcade.Sprite).destroy();
   }
 
   private handleBulletHit(_player: Phaser.GameObjects.GameObject, bullet: Phaser.GameObjects.GameObject) {
