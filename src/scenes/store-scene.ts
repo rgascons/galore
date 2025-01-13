@@ -9,7 +9,7 @@ export interface StoreItem {
 }
 
 export class StoreScene extends Phaser.Scene {
-  private money: number = 2000;
+  private money: number = 1000;
   private purchasedItems: StoreItem[] = [];
   private itemContainer?: Phaser.GameObjects.Container;
   private moneyText?: Phaser.GameObjects.Text;

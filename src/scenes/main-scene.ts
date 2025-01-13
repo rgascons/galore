@@ -6,6 +6,7 @@ import { MonsterManager } from '../game/monster-manager';
 import { TerrainGenerator } from '../game/terrain-generator';
 import { CharacterModifiers } from '../game/modifiers/character-modifiers';
 import { AbilityButton } from '../ui/ability-button';
+import { TimeDilationEffect } from '../effects/time-dilation';
 
 type ArcadePhysicsCallback = Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
 
@@ -21,6 +22,7 @@ export class MainScene extends Phaser.Scene {
   private characterModifiers: CharacterModifiers = new CharacterModifiers();
   private ghostFormButton?: AbilityButton;
   private timeDilationButton?: AbilityButton;
+  private timeDilationEffect?: TimeDilationEffect;
 
   private readonly SPAWN_DELAY = 3000;
   private readonly POINTS_PER_KILL = 100;
@@ -43,6 +45,9 @@ export class MainScene extends Phaser.Scene {
     Object.entries(Assets.Images).forEach(([key, path]) => {
       this.load.image(key, path);
     });
+
+    // Load particle texture
+    this.load.image('white-circle', 'assets/white-circle.svg');
   }
 
   create() {
@@ -80,6 +85,9 @@ export class MainScene extends Phaser.Scene {
 
     // Create ability buttons if abilities were purchased
     this.createAbilityButtons();
+
+    // Initialize time dilation effect
+    this.timeDilationEffect = new TimeDilationEffect(this);
   }
 
   private createAbilityButtons(): void {
@@ -123,14 +131,14 @@ export class MainScene extends Phaser.Scene {
 
   private activateGhostForm(): void {
     if (!this.player) return;
-    
+
     // Make player semi-transparent
     this.player.getSprite().setAlpha(0.5);
-    
+
     // Disable collisions with walls
     this.physics.world.colliders.getActive()
-      .filter(collider => 
-        collider.object1 === this.player?.getSprite() && 
+      .filter(collider =>
+        collider.object1 === this.player?.getSprite() &&
         collider.object2 === this.terrainGenerator?.getWalls()
       )
       .forEach(collider => collider.active = false);
@@ -138,22 +146,25 @@ export class MainScene extends Phaser.Scene {
 
   private deactivateGhostForm(): void {
     if (!this.player) return;
-    
+
     // Restore player opacity
     this.player.getSprite().setAlpha(1);
-    
+
     // Re-enable collisions with walls
     this.physics.world.colliders.getActive()
-      .filter(collider => 
-        collider.object1 === this.player?.getSprite() && 
+      .filter(collider =>
+        collider.object1 === this.player?.getSprite() &&
         collider.object2 === this.terrainGenerator?.getWalls()
       )
       .forEach(collider => collider.active = true);
   }
 
   private activateTimeDilation(): void {
-    if (!this.monsterManager) return;
-    
+    if (!this.monsterManager || !this.timeDilationEffect) return;
+
+    // Activate visual effect
+    this.timeDilationEffect.activate();
+
     // Slow down monsters
     this.monsterManager.getMonsters().getChildren().forEach((monster: any) => {
       monster.setVelocity(
@@ -172,8 +183,11 @@ export class MainScene extends Phaser.Scene {
   }
 
   private deactivateTimeDilation(): void {
-    if (!this.monsterManager) return;
-    
+    if (!this.monsterManager || !this.timeDilationEffect) return;
+
+    // Deactivate visual effect
+    this.timeDilationEffect.deactivate();
+
     // Restore monster speed
     this.monsterManager.getMonsters().getChildren().forEach((monster: any) => {
       monster.setVelocity(
