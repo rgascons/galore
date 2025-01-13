@@ -1,6 +1,7 @@
 import { AssetImagesKeys, AssetSoundKeys } from "../config/asset-config";
 import { MonsterManager } from "./monster-manager";
 import { CharacterModifiers, ModifierType } from "./modifiers/character-modifiers";
+import { CooldownBar } from "./cooldown-bar";
 
 export class Player {
   private sprite: Phaser.Physics.Arcade.Sprite;
@@ -13,6 +14,7 @@ export class Player {
   private shieldGraphics?: Phaser.GameObjects.Graphics;
   private shieldAngle: number = 0;
   private isInMud: boolean = false;
+  private cooldownBar: CooldownBar;
 
   private shootSound?: Phaser.Sound.BaseSound;
 
@@ -50,6 +52,8 @@ export class Player {
     });
 
     this.shootSound = scene.sound.add(AssetSoundKeys.Shoot);
+
+    this.cooldownBar = new CooldownBar(scene);
   }
 
   private getSpeed(): number {
@@ -104,6 +108,8 @@ export class Player {
 
     this.scene.physics.velocityFromRotation(angle, this.BULLET_SPEED, bullet.body?.velocity);
     bullet.setRotation(angle + Math.PI / 2);
+
+    this.cooldownBar.onShoot();
   }
 
   public update(monsterManager: MonsterManager): void {
@@ -141,6 +147,9 @@ export class Player {
 
     // Update shield effect
     this.updateShieldEffect();
+
+    // Update cooldown bar
+    this.cooldownBar.update(this.sprite.x, this.sprite.y, this.getFireRate());
   }
 
   public checkMudCollision(mud: Phaser.Physics.Arcade.StaticGroup): void {
@@ -152,7 +161,7 @@ export class Player {
       undefined,
       this
     );
-    
+
     // Reset mud state if not overlapping
     if (!this.scene.physics.overlap(this.sprite, mud)) {
       this.isInMud = false;
@@ -167,14 +176,14 @@ export class Player {
     if (this.hasShield()) {
       // Update shield rotation
       this.shieldAngle += this.SHIELD_ROTATION_SPEED;
-      
+
       // Draw shield effect
       this.shieldGraphics.lineStyle(2, 0x00ffff, 0.8);
-      
+
       // Create a hexagonal shield with rotation
       const points: { x: number, y: number }[] = [];
       const segments = 6;
-      
+
       for (let i = 0; i <= segments; i++) {
         const angle = (i / segments) * Math.PI * 2 + this.shieldAngle;
         points.push({
@@ -186,30 +195,35 @@ export class Player {
       // Draw the main shield shape
       this.shieldGraphics.beginPath();
       this.shieldGraphics.moveTo(points[0].x, points[0].y);
-      
+
       for (let i = 1; i <= segments; i++) {
         this.shieldGraphics.lineTo(points[i].x, points[i].y);
       }
-      
+
       this.shieldGraphics.strokePath();
 
       // Add glow effect
       this.shieldGraphics.lineStyle(4, 0x00ffff, 0.2);
       this.shieldGraphics.beginPath();
       this.shieldGraphics.moveTo(points[0].x, points[0].y);
-      
+
       for (let i = 1; i <= segments; i++) {
         this.shieldGraphics.lineTo(points[i].x, points[i].y);
       }
-      
+
       this.shieldGraphics.strokePath();
     }
   }
 
   public destroy(): void {
+    if (this.cooldownBar) {
+      this.cooldownBar.destroy();
+    }
+
     if (this.shieldGraphics) {
       this.shieldGraphics.destroy();
     }
+
     this.sprite.destroy();
   }
 }
