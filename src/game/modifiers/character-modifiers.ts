@@ -5,6 +5,11 @@ export enum ModifierType {
   FireRate = 'fireRate',
   Health = 'health',
   ScoreMultiplier = 'scoreMultiplier',
+  GhostForm = 'ghostForm',
+  TimeDilation = 'timeDilation',
+  BulletEcho = 'bulletEcho',
+  MonsterMagnet = 'monsterMagnet',
+  RevengeBlast = 'revengeBlast'
 }
 
 interface Modifier {
@@ -39,23 +44,21 @@ export class CharacterModifiers {
     const currentModifiers = this.modifiers.get(type) || [];
     const now = Date.now();
 
+    // Filter out expired modifiers
     const activeModifiers = currentModifiers.filter(mod => {
       if (!mod.duration || !mod.startTime) return true;
       return now - mod.startTime < mod.duration;
     });
 
+    // Update the list without expired ones
     this.modifiers.set(type, activeModifiers);
+
+    // Sum up all active modifier values
     return activeModifiers.reduce((total, mod) => total + mod.value, 0);
   }
 
-  public clearModifiers(type: ModifierType): void {
+  public clearModifier(type: ModifierType): void {
     this.modifiers.set(type, []);
-  }
-
-  public clearAllModifiers(): void {
-    Object.values(ModifierType).forEach(type => {
-      this.modifiers.set(type as ModifierType, []);
-    });
   }
 
   public applyStoreItem(item: StoreItem): void {
@@ -75,23 +78,19 @@ export class CharacterModifiers {
         return { type: ModifierType.Health, value: 1 };
       case 'double_points':
         return { type: ModifierType.ScoreMultiplier, value: 1 };
+      case 'ghost_form':
+        return { type: ModifierType.GhostForm, value: 1 };
+      case 'time_dilation':
+        return { type: ModifierType.TimeDilation, value: 0.5 };
+      case 'bullet_echo':
+        return { type: ModifierType.BulletEcho, value: 1 };
+      case 'monster_magnet':
+        return { type: ModifierType.MonsterMagnet, value: 1 };
+      case 'revenge_blast':
+        return { type: ModifierType.RevengeBlast, value: 1 };
       default:
         console.warn(`Unknown store item: ${item.id}`);
         return null;
     }
-  }
-
-  public update(): void {
-    Object.values(ModifierType).forEach(type => {
-      const currentModifiers = this.modifiers.get(type as ModifierType) || [];
-      const now = Date.now();
-
-      const activeModifiers = currentModifiers.filter(mod => {
-        if (!mod.duration || !mod.startTime) return true;
-        return now - mod.startTime < mod.duration;
-      });
-
-      this.modifiers.set(type as ModifierType, activeModifiers);
-    });
   }
 }

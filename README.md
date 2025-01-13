@@ -20,7 +20,8 @@ Install dependencies via `npm i` and then run `npm run dev`
 - [X] Floor tileset so player can tell they're moving
 - [X] Points as the time goes on and monsters killed
 - [X] Death screen showing number of points obtained and a revive button
-- [ ] Store to buy passive upgrades
+- [X] Store to buy passive upgrades
+- [X] Ability button and extra upgrades
 - [ ] Sound effects
 - ...the list will go on as I learn more Phaser
 

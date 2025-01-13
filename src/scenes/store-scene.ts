@@ -9,14 +9,13 @@ export interface StoreItem {
 }
 
 export class StoreScene extends Phaser.Scene {
-  private money: number = 1000;
+  private money: number = 2000;
   private purchasedItems: StoreItem[] = [];
   private itemContainer?: Phaser.GameObjects.Container;
   private moneyText?: Phaser.GameObjects.Text;
   private startButton?: Phaser.GameObjects.Container;
   private itemCards: Map<string, Phaser.GameObjects.Container> = new Map();
 
-  // Sample store items
   private storeItems: StoreItem[] = [
     {
       id: 'speed_boost',
@@ -45,6 +44,42 @@ export class StoreScene extends Phaser.Scene {
       description: '2x score multiplier',
       price: 1000,
       image: 'points_item'
+    },
+    {
+      id: 'ghost_form',
+      name: 'Ghost Form',
+      description: 'Phase through walls for 15s\nActivate with [G]',
+      price: 1200,
+      image: 'ghost_item'
+    },
+    {
+      id: 'time_dilation',
+      name: 'Time Dilation',
+      description: 'Slow time for 10s\nActivate with [T]',
+      price: 800,
+      image: 'time_item'
+    },
+    // All below not implemented
+    {
+      id: 'bullet_echo',
+      name: 'Bullet Echo',
+      description: 'Bullets split on wall impact',
+      price: 900,
+      image: 'echo_item'
+    },
+    {
+      id: 'monster_magnet',
+      name: 'Monster Magnet',
+      description: 'Pull monsters to cursor',
+      price: 700,
+      image: 'magnet_item'
+    },
+    {
+      id: 'revenge_blast',
+      name: 'Revenge Blast',
+      description: 'Explode on death',
+      price: 1500,
+      image: 'blast_item'
     }
   ];
 
@@ -113,7 +148,7 @@ export class StoreScene extends Phaser.Scene {
     this.input.on('wheel', (pointer: any, gameObjects: any, deltaX: number, deltaY: number) => {
       if (this.itemContainer) {
         this.itemContainer.y -= deltaY;
-        const availableItems = this.storeItems.filter(item => 
+        const availableItems = this.storeItems.filter(item =>
           !this.purchasedItems.some(purchased => purchased.id === item.id)
         );
         this.itemContainer.y = Phaser.Math.Clamp(
@@ -129,7 +164,7 @@ export class StoreScene extends Phaser.Scene {
     if (!this.itemContainer) return;
 
     // Filter out purchased items
-    const availableItems = this.storeItems.filter(item => 
+    const availableItems = this.storeItems.filter(item =>
       !this.purchasedItems.some(purchased => purchased.id === item.id)
     );
 
@@ -251,7 +286,7 @@ export class StoreScene extends Phaser.Scene {
 
   private reorganizeItems() {
     // Get remaining cards and reorganize their positions
-    const availableItems = this.storeItems.filter(item => 
+    const availableItems = this.storeItems.filter(item =>
       !this.purchasedItems.some(purchased => purchased.id === item.id)
     );
 

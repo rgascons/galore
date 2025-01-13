@@ -5,6 +5,7 @@ import { Player } from '../game/player';
 import { MonsterManager } from '../game/monster-manager';
 import { TerrainGenerator } from '../game/terrain-generator';
 import { CharacterModifiers } from '../game/modifiers/character-modifiers';
+import { AbilityButton } from '../ui/ability-button';
 
 type ArcadePhysicsCallback = Phaser.Types.Physics.Arcade.ArcadePhysicsCallback;
 
@@ -18,6 +19,8 @@ export class MainScene extends Phaser.Scene {
   private monsterSpawnTimer: number = 0;
   private purchasedItems: StoreItem[] = [];
   private characterModifiers: CharacterModifiers = new CharacterModifiers();
+  private ghostFormButton?: AbilityButton;
+  private timeDilationButton?: AbilityButton;
 
   private readonly SPAWN_DELAY = 3000;
   private readonly POINTS_PER_KILL = 100;
@@ -48,7 +51,7 @@ export class MainScene extends Phaser.Scene {
     this.purchasedItems.forEach(item => {
       this.characterModifiers?.applyStoreItem(item);
     });
-    
+
     // Initialize terrain
     this.terrainGenerator = new TerrainGenerator(this);
     this.terrainGenerator.initialize();
@@ -74,6 +77,118 @@ export class MainScene extends Phaser.Scene {
 
     // Setup score display
     this.setupScoreDisplay();
+
+    // Create ability buttons if abilities were purchased
+    this.createAbilityButtons();
+  }
+
+  private createAbilityButtons(): void {
+    const hasGhostForm = this.purchasedItems?.some(item => item.id === 'ghost_form');
+    const hasTimeDilation = this.purchasedItems?.some(item => item.id === 'time_dilation');
+
+    let buttonX = 80; // Starting X position for buttons
+
+    if (hasGhostForm) {
+      this.ghostFormButton = new AbilityButton(
+        this,
+        buttonX,
+        this.scale.height - 80,
+        {
+          key: 'G',
+          duration: 15000, // 15 seconds
+          icon: '👻'
+        },
+        () => this.activateGhostForm(),
+        () => this.deactivateGhostForm()
+      );
+      buttonX += 70; // Space for next button
+    }
+
+    if (hasTimeDilation) {
+      console.log('time dilation')
+      this.timeDilationButton = new AbilityButton(
+        this,
+        buttonX,
+        this.scale.height - 80,
+        {
+          key: 'T',
+          duration: 10000, // 10 seconds
+          icon: '⌛'
+        },
+        () => this.activateTimeDilation(),
+        () => this.deactivateTimeDilation()
+      );
+    }
+  }
+
+  private activateGhostForm(): void {
+    if (!this.player) return;
+    
+    // Make player semi-transparent
+    this.player.getSprite().setAlpha(0.5);
+    
+    // Disable collisions with walls
+    this.physics.world.colliders.getActive()
+      .filter(collider => 
+        collider.object1 === this.player?.getSprite() && 
+        collider.object2 === this.terrainGenerator?.getWalls()
+      )
+      .forEach(collider => collider.active = false);
+  }
+
+  private deactivateGhostForm(): void {
+    if (!this.player) return;
+    
+    // Restore player opacity
+    this.player.getSprite().setAlpha(1);
+    
+    // Re-enable collisions with walls
+    this.physics.world.colliders.getActive()
+      .filter(collider => 
+        collider.object1 === this.player?.getSprite() && 
+        collider.object2 === this.terrainGenerator?.getWalls()
+      )
+      .forEach(collider => collider.active = true);
+  }
+
+  private activateTimeDilation(): void {
+    if (!this.monsterManager) return;
+    
+    // Slow down monsters
+    this.monsterManager.getMonsters().getChildren().forEach((monster: any) => {
+      monster.setVelocity(
+        monster.body.velocity.x * 0.5,
+        monster.body.velocity.y * 0.5
+      );
+    });
+
+    // Slow down monster bullets
+    this.monsterManager.getBullets().getChildren().forEach((bullet: any) => {
+      bullet.setVelocity(
+        bullet.body.velocity.x * 0.5,
+        bullet.body.velocity.y * 0.5
+      );
+    });
+  }
+
+  private deactivateTimeDilation(): void {
+    if (!this.monsterManager) return;
+    
+    // Restore monster speed
+    this.monsterManager.getMonsters().getChildren().forEach((monster: any) => {
+      monster.setVelocity(
+        monster.body.velocity.x * 2,
+        monster.body.velocity.y * 2
+      );
+    });
+
+    // Restore bullet speed
+    this.monsterManager.getBullets().getChildren().forEach((bullet: any) => {
+      bullet.setVelocity(
+        bullet.body.velocity.x * 2,
+        bullet.body.velocity.y * 2
+      );
+    });
   }
 
   private setupCollisions() {
@@ -148,7 +263,7 @@ export class MainScene extends Phaser.Scene {
 
   private handleBulletHit(_player: Phaser.GameObjects.GameObject, bullet: Phaser.GameObjects.GameObject) {
     (bullet as Phaser.Physics.Arcade.Sprite).destroy();
-    
+
     if (this.player?.hasShield()) {
       this.player?.removeShield();
     } else {
@@ -191,5 +306,15 @@ export class MainScene extends Phaser.Scene {
       this.addPoints(this.POINTS_PER_SECOND);
       this.lastTimePoint = time;
     }
+
+    // Update ability buttons
+    this.ghostFormButton?.update();
+    this.timeDilationButton?.update();
+  }
+
+  destroy(): void {
+    // Clean up buttons when scene is destroyed
+    this.ghostFormButton?.destroy();
+    this.timeDilationButton?.destroy();
   }
 }

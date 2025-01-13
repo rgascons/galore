@@ -71,7 +71,7 @@ export class Player {
   }
 
   public removeShield(): void {
-    this.modifiers.clearModifiers(ModifierType.Health);
+    this.modifiers.clearModifier(ModifierType.Health);
   }
 
   public getSprite(): Phaser.Physics.Arcade.Sprite {
