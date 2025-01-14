@@ -23,7 +23,6 @@ export class Player {
   private currentHealth: number;
   private lastRegenTime: number = 0;
   private readonly REGEN_INTERVAL = 10000; // 10 seconds
-  private readonly BULLET_DAMAGE = 2;
 
   private shootSound?: Phaser.Sound.BaseSound;
 
@@ -80,8 +79,7 @@ export class Player {
   }
 
   public getMaxHealth(): number {
-    const healthModifier = this.modifiers.getModifierValue(ModifierType.Health);
-    return this.baseHealth + healthModifier;
+    return this.baseHealth;
   }
 
   public getCurrentHealth(): number {
@@ -90,6 +88,11 @@ export class Player {
 
   public takeDamage(amount: number): void {
     this.currentHealth = Math.max(0, this.currentHealth - amount);
+  }
+
+  public getLifeRegenInterval(): number {
+    const regenIntervalModifier = this.modifiers.getModifierValue(ModifierType.LifeRegen);
+    return regenIntervalModifier ? regenIntervalModifier : this.REGEN_INTERVAL;
   }
 
   public heal(amount: number): void {
@@ -102,11 +105,11 @@ export class Player {
   }
 
   public hasShield(): boolean {
-    return this.modifiers.getModifierValue(ModifierType.Health) > 0;
+    return this.modifiers.getModifierValue(ModifierType.Shield) > 0;
   }
 
   public removeShield(): void {
-    this.modifiers.clearModifier(ModifierType.Health);
+    this.modifiers.clearModifier(ModifierType.Shield);
   }
 
   public getSprite(): Phaser.Physics.Arcade.Sprite {
@@ -179,7 +182,7 @@ export class Player {
 
     // Handle health regeneration
     const currentTime = this.scene.time.now;
-    if (currentTime - this.lastRegenTime >= this.REGEN_INTERVAL) {
+    if (currentTime - this.lastRegenTime >= this.getLifeRegenInterval()) {
       this.heal(1);
       this.lastRegenTime = currentTime;
     }

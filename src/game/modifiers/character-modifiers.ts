@@ -3,7 +3,8 @@ import { StoreItem } from "../../scenes/store-scene";
 export enum ModifierType {
   Speed = 'speed',
   FireRate = 'fireRate',
-  Health = 'health',
+  Shield = 'health',
+  LifeRegen = 'lifeRegen',
   ScoreMultiplier = 'scoreMultiplier',
   GhostForm = 'ghostForm',
   TimeDilation = 'timeDilation',
@@ -75,7 +76,9 @@ export class CharacterModifiers {
       case 'rapid_fire':
         return { type: ModifierType.FireRate, value: 0.5 };
       case 'shield':
-        return { type: ModifierType.Health, value: 1 };
+        return { type: ModifierType.Shield, value: 1 };
+      case 'life_regen':
+        return { type: ModifierType.LifeRegen, value: 8000 };
       case 'double_points':
         return { type: ModifierType.ScoreMultiplier, value: 1 };
       case 'ghost_form':

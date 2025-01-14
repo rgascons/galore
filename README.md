@@ -26,7 +26,8 @@ Install dependencies via `npm i` and then run `npm run dev`
 - [X] Improved terrain generation
 - [X] Add monster variety
 - [X] Display shooting cooldown bar
-- [ ] Add lives
+- [X] Add health
+- [X] Add life regeneration item
 - [ ] Balance pass to make the game more forgiving (monster speed, obstacles, cooldowns)
 - [ ] Implement more items
 - ...the list will go on as I learn more Phaser

@@ -35,8 +35,15 @@ export class StoreScene extends Phaser.Scene {
       id: 'shield',
       name: 'Shield',
       description: 'Survive one hit',
-      price: 800,
+      price: 400,
       image: 'shield_item'
+    },
+    {
+      id: 'life_regen',
+      name: 'Live Regeneration',
+      description: 'Life regenerates every 8 seconds instead of 10',
+      price: 800,
+      image: 'life_regen_item'
     },
     {
       id: 'double_points',

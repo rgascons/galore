@@ -35,6 +35,7 @@ export class MainScene extends Phaser.Scene {
   private readonly POINTS_PER_SECOND = 10;
   private readonly TIME_POINT_INTERVAL = 1000;
   private readonly TIME_DILATION_MULTIPLIER = 0.3;
+  private readonly BULLET_DAMAGE = 2;
 
   constructor() {
     super({ key: 'MainScene' });
@@ -296,7 +297,7 @@ export class MainScene extends Phaser.Scene {
       if (this.player.hasShield()) {
         this.player.removeShield();
       } else {
-        this.player.takeDamage(2); // Take 2 damage from bullets
+        this.player.takeDamage(this.BULLET_DAMAGE);
         
         if (this.player.getCurrentHealth() <= 0) {
           this.deathSound?.play();
