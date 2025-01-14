@@ -8,6 +8,12 @@ export class Player {
   private sprite: Phaser.Physics.Arcade.Sprite;
   private bullets: Phaser.Physics.Arcade.Group;
   private cursors?: Phaser.Types.Input.Keyboard.CursorKeys;
+  private wasdKeys: {
+    W: Phaser.Input.Keyboard.Key;
+    A: Phaser.Input.Keyboard.Key;
+    S: Phaser.Input.Keyboard.Key;
+    D: Phaser.Input.Keyboard.Key;
+  };
   private spaceKey?: Phaser.Input.Keyboard.Key;
   private scene: Phaser.Scene;
   private modifiers: CharacterModifiers;
@@ -46,6 +52,12 @@ export class Player {
     this.updateShieldEffect();
 
     this.cursors = scene.input.keyboard?.createCursorKeys();
+    this.wasdKeys = {
+      W: scene.input.keyboard?.addKey('W')!,
+      A: scene.input.keyboard?.addKey('A')!,
+      S: scene.input.keyboard?.addKey('S')!,
+      D: scene.input.keyboard?.addKey('D')!,
+    };
     this.spaceKey = scene.input.keyboard?.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
 
     this.bullets = scene.physics.add.group({
@@ -145,17 +157,17 @@ export class Player {
     const speed = this.getSpeed();
 
     // Handle movement
-    if (this.cursors.left.isDown) {
+    if (this.cursors.left.isDown || this.wasdKeys.A.isDown) {
       this.sprite.setVelocityX(-speed);
-    } else if (this.cursors.right.isDown) {
+    } else if (this.cursors.right.isDown || this.wasdKeys.D.isDown) {
       this.sprite.setVelocityX(speed);
     } else {
       this.sprite.setVelocityX(0);
     }
 
-    if (this.cursors.up.isDown) {
+    if (this.cursors.up.isDown || this.wasdKeys.W.isDown) {
       this.sprite.setVelocityY(-speed);
-    } else if (this.cursors.down.isDown) {
+    } else if (this.cursors.down.isDown || this.wasdKeys.S.isDown) {
       this.sprite.setVelocityY(speed);
     } else {
       this.sprite.setVelocityY(0);
