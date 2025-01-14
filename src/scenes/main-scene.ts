@@ -292,11 +292,17 @@ export class MainScene extends Phaser.Scene {
   private handleBulletHit(_player: Phaser.GameObjects.GameObject, bullet: Phaser.GameObjects.GameObject) {
     (bullet as Phaser.Physics.Arcade.Sprite).destroy();
 
-    if (this.player?.hasShield()) {
-      this.player?.removeShield();
-    } else {
-      this.deathSound?.play();
-      this.scene.start('GameOverScene', { score: this.score });
+    if (this.player) {
+      if (this.player.hasShield()) {
+        this.player.removeShield();
+      } else {
+        this.player.takeDamage(2); // Take 2 damage from bullets
+        
+        if (this.player.getCurrentHealth() <= 0) {
+          this.deathSound?.play();
+          this.scene.start('GameOverScene', { score: this.score });
+        }
+      }
     }
   }
 
@@ -334,8 +340,8 @@ export class MainScene extends Phaser.Scene {
       playerPos,
       this.terrainGenerator.getWorldBounds(),
       {
-        BulletSpeedMultiplier: this.timeDilationEffect?.isActive()? this.TIME_DILATION_MULTIPLIER : 1,
-        MonsterSpeedMultiplier: this.timeDilationEffect?.isActive()? this.TIME_DILATION_MULTIPLIER : 1,
+        BulletSpeedMultiplier: this.timeDilationEffect?.isActive() ? this.TIME_DILATION_MULTIPLIER : 1,
+        MonsterSpeedMultiplier: this.timeDilationEffect?.isActive() ? this.TIME_DILATION_MULTIPLIER : 1,
       }
     );
 

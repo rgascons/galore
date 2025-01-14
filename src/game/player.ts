@@ -1,7 +1,8 @@
 import { AssetImagesKeys, AssetSoundKeys } from "../config/asset-config";
 import { MonsterManager } from "./monster-manager";
 import { CharacterModifiers, ModifierType } from "./modifiers/character-modifiers";
-import { CooldownBar } from "./cooldown-bar";
+import { CooldownBar } from "../ui/status-bar/cooldown-bar";
+import { HealthBar } from "../ui/status-bar/health-bar";
 
 export class Player {
   private sprite: Phaser.Physics.Arcade.Sprite;
@@ -15,12 +16,19 @@ export class Player {
   private shieldAngle: number = 0;
   private isInMud: boolean = false;
   private cooldownBar: CooldownBar;
+  private healthBar: HealthBar;
+
+  // Health system
+  private readonly baseHealth: number = 10;
+  private currentHealth: number;
+  private lastRegenTime: number = 0;
+  private readonly REGEN_INTERVAL = 10000; // 10 seconds
+  private readonly BULLET_DAMAGE = 2;
 
   private shootSound?: Phaser.Sound.BaseSound;
 
   private readonly baseSpeed: number = 160;
   private readonly baseFireRate: number = 1000;
-  private readonly baseHealth: number = 1;
   private readonly BULLET_SPEED = 400;
   private readonly SHIELD_RADIUS = 15;
   private readonly SHIELD_ROTATION_SPEED = 0.02;
@@ -53,7 +61,10 @@ export class Player {
 
     this.shootSound = scene.sound.add(AssetSoundKeys.Shoot);
 
+    // Initialize UI elements
     this.cooldownBar = new CooldownBar(scene);
+    this.healthBar = new HealthBar(scene);
+    this.currentHealth = this.getMaxHealth();
   }
 
   private getSpeed(): number {
@@ -68,14 +79,26 @@ export class Player {
     return this.baseFireRate * (1 - fireRateModifier);
   }
 
-  public getHealth(): number {
+  public getMaxHealth(): number {
     const healthModifier = this.modifiers.getModifierValue(ModifierType.Health);
     return this.baseHealth + healthModifier;
   }
 
+  public getCurrentHealth(): number {
+    return this.currentHealth;
+  }
+
+  public takeDamage(amount: number): void {
+    this.currentHealth = Math.max(0, this.currentHealth - amount);
+  }
+
+  public heal(amount: number): void {
+    this.currentHealth = Math.min(this.getMaxHealth(), this.currentHealth + amount);
+  }
+
   public getScoreMultiplier(): number {
     const multiplierModifier = this.modifiers.getModifierValue(ModifierType.ScoreMultiplier);
-    return 1 + multiplierModifier; // Base multiplier is 1
+    return 1 + multiplierModifier;
   }
 
   public hasShield(): boolean {
@@ -118,6 +141,7 @@ export class Player {
 
     const speed = this.getSpeed();
 
+    // Handle movement
     if (this.cursors.left.isDown) {
       this.sprite.setVelocityX(-speed);
     } else if (this.cursors.right.isDown) {
@@ -134,6 +158,7 @@ export class Player {
       this.sprite.setVelocityY(0);
     }
 
+    // Handle shooting
     if (Phaser.Input.Keyboard.JustDown(this.spaceKey)) {
       const currentTime = this.scene.time.now;
       if (currentTime - this.lastShootTime >= this.getFireRate()) {
@@ -148,8 +173,16 @@ export class Player {
     // Update shield effect
     this.updateShieldEffect();
 
-    // Update cooldown bar
+    // Update UI bars
     this.cooldownBar.update(this.sprite.x, this.sprite.y, this.getFireRate());
+    this.healthBar.update(this.sprite.x, this.sprite.y, this.currentHealth, this.getMaxHealth());
+
+    // Handle health regeneration
+    const currentTime = this.scene.time.now;
+    if (currentTime - this.lastRegenTime >= this.REGEN_INTERVAL) {
+      this.heal(1);
+      this.lastRegenTime = currentTime;
+    }
   }
 
   public checkMudCollision(mud: Phaser.Physics.Arcade.StaticGroup): void {
@@ -219,7 +252,9 @@ export class Player {
     if (this.cooldownBar) {
       this.cooldownBar.destroy();
     }
-
+    if (this.healthBar) {
+      this.healthBar.destroy();
+    }
     if (this.shieldGraphics) {
       this.shieldGraphics.destroy();
     }
