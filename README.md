@@ -28,7 +28,7 @@ Install dependencies via `npm i` and then run `npm run dev`
 - [X] Display shooting cooldown bar
 - [X] Add health
 - [X] Add life regeneration item
-- [ ] Add resolutions
+- [X] Add resolutions
 - [ ] Balance pass to make the game more forgiving (monster speed, obstacles, cooldowns)
 - [ ] Implement more items
 - ...the list will go on as I learn more Phaser
